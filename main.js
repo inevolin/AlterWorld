@@ -64,7 +64,8 @@ function uiElements() {
     
     $('#chkfacingmode').on('click', function() {
         localStorage.setItem('chkfacingmode', $("#chkfacingmode")[0].checked);
-        location.reload();
+        // location.reload();
+        onCvLoaded();
     })
 
     $('#chkmirror').on('click', function() {
@@ -73,7 +74,8 @@ function uiElements() {
 
     $("#quality").change(function () {
         localStorage.setItem('quality', $('#quality').val());
-        location.reload();
+        // location.reload();
+        onCvLoaded();
     })
 }
 
@@ -106,6 +108,9 @@ function checkBrowserCompat() {
 }
 
 function onCvLoaded() {
+    if(lastTimeout != null) clearTimeout(lastTimeout);
+    abortStream();
+
     let WW = $(window).width();
     let WH = $(window).height();
     if (window.orientation == 0) {
@@ -157,7 +162,17 @@ function toggleFullscreen(elem) {
     }
 }
 
-function processStream(stream) {
+let src = null;
+let dst = null;
+let stream = null;
+function abortStream() {
+    if (stream == null) return;
+    stream.getTracks().forEach(function(track) {
+        track.stop();
+    });
+}
+function processStream(_stream) {
+    stream = _stream;
 
     let WW = $(window).width();
     let WH = $(window).height();
@@ -182,12 +197,12 @@ function processStream(stream) {
     video.srcObject = stream;
     video.play();
 
-    let src = new cv.Mat(VH, VW, cv.CV_8UC4);
-    let dst = new cv.Mat(VH, VW, cv.CV_8UC1);
+    src = new cv.Mat(VH, VW, cv.CV_8UC4);
+    dst = new cv.Mat(VH, VW, cv.CV_8UC1);
     let cap = new cv.VideoCapture(video);
 
     let scale;
-    if (window.orientation === 0 ) // || window.orientation === undefined
+    if (window.orientation === 0 || window.orientation === undefined)
         scale = new cv.Size(WH*VW/VH, WH)
     else
         scale = new cv.Size(WW, WW/VW*VH)
@@ -209,6 +224,7 @@ function processStream(stream) {
 
             lastTimeout = setTimeout(processVideo, delay);
         } catch (err) {
+            $('#status').text('Error: ' + err);
             console.log(err);
             console.error(err);
         }
@@ -229,6 +245,14 @@ function apply_algos(src, dst) {
             break;
         case 'canny-xl':
             cv.Canny(src, dst, 50, 75)
+            break;
+        case 'adagauss':
+            let blocksize = 50;
+            if (blocksize % 2 === 0) blocksize = blocksize + 1;
+            let mat = new cv.Mat(src.size().height, src.size().width, cv.CV_8U);
+            cv.cvtColor(src, mat, cv.COLOR_RGBA2GRAY);
+            cv.adaptiveThreshold(mat, dst, 200, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, blocksize, 2);
+            mat.delete();
             break;
         default:
             cv.bitwise_and(src, src, dst)
