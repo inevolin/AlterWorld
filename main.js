@@ -20,6 +20,9 @@ let lastTimeout = null;
 
 let gifrec = false;
 let gifw = null;
+const GIF_MAX_DUR_SEC = 10; // s
+let gif_frame_cnt = 0;
+
 function gifw_init() {
     gifw = new Worker('gifworker.js');
     gifw.onmessage = gifw_onmessage;
@@ -28,6 +31,7 @@ function gifw_init() {
 const gifw_onmessage = function(e) {
     if ('gif' in e.data) {
         $("#recordcanvas").prop("disabled", false);
+        $('#recordcanvas').val('start recording');
         const name = 'alterworld_'+$('#algoselect option:selected').text().replace(/[^a-zA-Z0-9]+/g, '')+'.gif';
         const data = URL.createObjectURL(new Blob([new Uint8Array(e.data.gif)], {type : "image/gif" } ));
         downloadFile(name, data);
@@ -45,10 +49,12 @@ const gifw_onerror = function(e) {
     gifw_init();
     alert('gif recording failed');
     $("#recordcanvas").prop("disabled", false);
+    $('#recordcanvas').val('start recording');
 };
 
 function startRec() {
     gifrec = true;
+    gif_frame_cnt = 0;
     $('#recordcanvas').val('stop recording');
     if(gifw)
         gifw.postMessage({op: 'start'});
@@ -56,9 +62,10 @@ function startRec() {
 function stopRec() {
     gifrec = false;
     $("#recordcanvas").prop("disabled", true);
-    $('#recordcanvas').val('start recording');
-    if (gifw)
+    if (gifw) {
+        $('#recordcanvas').val('rendering ...');
         gifw.postMessage({op: 'stop'})
+    }
 }
 
 $(document).on('ready', function() {
@@ -308,9 +315,8 @@ function processStream(_stream) {
                 //dst = dst.roi(rect);
                 cv.imshow("canvasOutput", dst);
 
-                if (gifrec && cnt%1==0) {
-                    captureFrame()
-                }
+                
+                captureFrame(FPS)
 
                 let delay = 1000 / FPS - (Date.now() - begin);
                 if (delay < 0) delay = 0;
@@ -336,8 +342,15 @@ function processStream(_stream) {
     }
 }
 
-function captureFrame() {
+function captureFrame(FPS) {
+    if (!gifrec) return;
     try {
+        if (gif_frame_cnt/FPS >= GIF_MAX_DUR_SEC) {
+            console.log('GIF_MAX_DUR_SEC reached: ' + gif_frame_cnt + ' frames at ' + FPS + 'fps')
+            stopRec();
+        }
+        gif_frame_cnt++;
+
         let imdata = null;
         const canvas = $('#canvasOutput')[0];
         let w = canvas.width;
