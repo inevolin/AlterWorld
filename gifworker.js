@@ -3,7 +3,7 @@ self.importScripts('LZWEncoder.js','NeuQuant.js','GIFEncoder.js');
 
 let gif = null;
 
-const MAX_DUR_SEC = 2; // s
+const MAX_DUR_SEC = 10; // s
 const DELAY = 30; // ms
 let cnt_frames = 0;
 let abort_req = false;
