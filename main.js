@@ -202,6 +202,9 @@ function processStream(_stream) {
     const video = document.getElementById("videoInput"); 
     video.width  = VW;
     video.height = VH;
+    video.setAttribute('autoplay', '');
+    video.setAttribute('muted', '');
+    video.setAttribute('playsinline', '');
     video.srcObject = stream;
     video.play();
 
