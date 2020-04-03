@@ -1,9 +1,8 @@
 
 self.importScripts('LZWEncoder.js','NeuQuant.js','GIFEncoder.js');
-
+// https://github.com/antimatter15/jsgif
 let gif = null;
 
-const DELAY = 1000/30; // ms
 let stopped = false; // ensure only one stop request is processed
 
 console.log('gifworker loaded')
@@ -23,7 +22,7 @@ function mproc(m) {
             console.log('gifworker: start')
             gif = new GIFEncoder();
             gif.setRepeat(0);
-            gif.setDelay(DELAY);
+            gif.setDelay(data.delay);
             stopped = false;
             if (!gif.start()) 
                 throw 'Error on gif_start';

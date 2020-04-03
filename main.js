@@ -1,4 +1,11 @@
-// htmlLog()
+
+let stats = null;
+function debugingStuff() {
+    stats = new Stats();
+    stats.showPanel( 0 ); // 0: fps, 1: ms, 2: mb, 3+: custom
+    document.body.appendChild( stats.dom );
+    htmlLog()
+}
 function htmlLog() {
     var log = console.log;
     var logs = document.getElementById('log');
@@ -14,9 +21,14 @@ function htmlLog() {
     }
 }
 
+// debugingStuff();
+
 const is_mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 console.log('is_mobile: ' + is_mobile)
 let lastTimeout = null;
+
+const FPS = 30;
+let recDelay = 1000/FPS;
 
 let gifrec = false;
 let gifw = null;
@@ -57,12 +69,13 @@ function startRec() {
     gif_frame_cnt = 0;
     $('#recordcanvas').val('stop recording');
     if(gifw)
-        gifw.postMessage({op: 'start'});
+        gifw.postMessage({op: 'start', delay: 1000/recDelay});
 }
 function stopRec() {
     gifrec = false;
     $("#recordcanvas").prop("disabled", true);
     if (gifw) {
+        console.log('recorded ' + gif_frame_cnt + ' frames at ' + (1000/recDelay) + 'fps')
         $('#recordcanvas').val('rendering ...');
         gifw.postMessage({op: 'stop'})
     }
@@ -293,9 +306,6 @@ function processStream(_stream) {
         else
             scale = new cv.Size(WW, WW/VW*VH)
 
-        const FPS = 30;
-        let cnt = 0;
-
         function processVideo() {
             try {
                 if (prevori != window.orientation) {
@@ -305,23 +315,31 @@ function processStream(_stream) {
                     });
                     return;
                 }
-                let begin = Date.now();
+
+                ///////////////////////////////
+                if(stats) stats.begin();
+                let t0 = performance.now();
+
                 cap.read(src);
+
                 if ($('#chkmirror')[0].checked)
                     cv.flip(src, src, +1)
+
                 apply_algos(src, dst)
                 
                 cv.resize(dst, dst, scale, 0, 0, cv.INTER_AREA);
-                //dst = dst.roi(rect);
                 cv.imshow("canvasOutput", dst);
 
-                
-                captureFrame(FPS)
+                let t1 = performance.now();
+                if(stats) stats.end();
+                recDelay = t1 - t0;
+                ///////////////////////////////
 
-                let delay = 1000 / FPS - (Date.now() - begin);
+                captureFrame()
+
+                let delay = 1000 / FPS - recDelay;
                 if (delay < 0) delay = 0;
-                cnt++;
-                if (cnt >= 1000) cnt = 0; // reset
+
                 lastTimeout = setTimeout(processVideo, delay);
             } catch (err) {
                 $('#status').text('Error: ' + err);
@@ -342,7 +360,7 @@ function processStream(_stream) {
     }
 }
 
-function captureFrame(FPS) {
+async function captureFrame() {
     if (!gifrec) return;
     try {
         if (gif_frame_cnt/FPS >= GIF_MAX_DUR_SEC) {
