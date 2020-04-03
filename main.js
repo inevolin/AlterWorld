@@ -1,13 +1,16 @@
-htmlLog()
+// htmlLog()
 function htmlLog() {
-    var old = console.log;
-    var logger = document.getElementById('log');
-    console.log = function (message) {
-        if (typeof message == 'object') {
-            logger.innerHTML += (JSON && JSON.stringify ? JSON.stringify(message) : message) + '<br />';
-        } else {
-            logger.innerHTML += message + '<br />';
+    var log = console.log;
+    var logs = document.getElementById('log');
+    console.log = function(){
+        var args = Array.from(arguments);
+        for (var i = 0; i < args.length; i++) {
+            let line = args[i];
+            if (typeof args[i] == 'object')
+                line = JSON.stringify(args[i])
+            logs.innerHTML += line + '<br />';
         }
+        log.apply(console, args);
     }
 }
 
@@ -15,8 +18,52 @@ const is_mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini
 console.log('is_mobile: ' + is_mobile)
 let lastTimeout = null;
 
+let gifrec = false;
+let gifw = null;
+function gifw_init() {
+    gifw = new Worker('gifworker.js');
+    gifw.onmessage = gifw_onmessage;
+    gifw.onerror = gifw_onerror;
+}
+const gifw_onmessage = function(e) {
+    if ('gif' in e.data) {
+        $("#recordcanvas").prop("disabled", false);
+        const name = 'alterworld_'+$('#algoselect option:selected').text().replace(/[^a-zA-Z0-9]+/g, '')+'.gif';
+        const data = URL.createObjectURL(new Blob([new Uint8Array(e.data.gif)], {type : "image/gif" } ));
+        downloadFile(name, data);
+    } else if ('abort' in e.data) {
+        console.log('gif abort received')
+        stopRec();
+    }
+};
+const gifw_onerror = function(e) {
+    console.log(e)
+    if (gifw)
+        gifw.terminate();
+    gifw = null;
+    stopRec();
+    gifw_init();
+    alert('gif recording failed');
+    $("#recordcanvas").prop("disabled", false);
+};
+
+function startRec() {
+    gifrec = true;
+    $('#recordcanvas').val('stop recording');
+    if(gifw)
+        gifw.postMessage({op: 'start'});
+}
+function stopRec() {
+    gifrec = false;
+    $("#recordcanvas").prop("disabled", true);
+    $('#recordcanvas').val('start recording');
+    if (gifw)
+        gifw.postMessage({op: 'stop'})
+}
+
 $(document).on('ready', function() {
     console.log('document ready')
+    gifw_init();
     uiElements();
     if (!checkBrowserCompat()) {
         console.log('checkBrowserCompat: fail')
@@ -26,9 +73,7 @@ $(document).on('ready', function() {
     }
 
     cv['onRuntimeInitialized']=()=>{
-        window.scrollTo(0, 1);
         onCvLoaded();
-        $('#status').text('');
     }
 })
 
@@ -38,7 +83,7 @@ function getL(id) {
     return t !== undefined && t !== null;
 }
 function uiElements() {
-
+    $("#uiform :input").prop("disabled", true);
     if (!is_mobile) {
         $('#chkfacingmode').parent().hide();
         $("#chkfacingmode").prop('checked', false);
@@ -77,16 +122,24 @@ function uiElements() {
         // location.reload();
         onCvLoaded();
     })
-
-
     
     $('#dlcanvas').on('click', function() {
-        var link = document.createElement('a');
-        link.download = 'alterworld_'+$('#algoselect option:selected').text().replace(/[^a-zA-Z0-9]+/g, '')+'.png';
-        link.href = document.getElementById('canvasOutput').toDataURL()
-        link.click();
-        link.parentNode.removeChild(link);
+        const name = 'alterworld_'+$('#algoselect option:selected').text().replace(/[^a-zA-Z0-9]+/g, '')+'.png';
+        const data = document.getElementById('canvasOutput').toDataURL();
+        downloadFile(name, data);
     })
+
+    $('#recordcanvas').on('click', function() {
+        if (!gifrec) startRec();
+        else stopRec();
+    })
+}
+
+function downloadFile(name, data) {
+    var link = document.createElement('a');
+    link.download = name;
+    link.href = data;
+    link.click();
 }
 
 function checkBrowserCompat() {
@@ -155,7 +208,7 @@ function onCvLoaded() {
     .then(processStream)
     .catch(function(err) {
         $('#status').text(err);
-        console.log('error: '+err);
+        console.log(err);
     });
 }
 function toggleFullscreen(elem) {
@@ -184,82 +237,144 @@ function abortStream() {
     });
 }
 function processStream(_stream) {
-    stream = _stream;
-
-    let WW = $(window).width();
-    let WH = $(window).height();
-
-    console.log('orientation: ' + window.orientation)
-    console.log('W: ' +WW +', ' + WH)
+    try {
+        $("#uiform :input").prop("disabled", false);
+        $('#status').text('');
     
-    const settings = stream.getTracks()[0].getSettings();
-    let VW = settings.width;
-    let VH = settings.height;
+        
+        stream = _stream;
 
-    if (window.orientation === 0 && VW > VH) { // ici
-        console.log('res swap')
-        VW = settings.height;
-        VH = settings.width;
-    }
-    if (window.orientation === 90 && VH > VW) { // ici
-        console.log('res swap')
-        VW = settings.height;
-        VH = settings.width;
-    }
+        let WW = $(window).width();
+        let WH = $(window).height();
 
-    console.log('V: '+VW + ', ' + VH)
-    
-    const video = document.getElementById("videoInput"); 
-    video.width  = VW;
-    video.height = VH;
-    video.setAttribute('autoplay', '');
-    video.setAttribute('muted', '');
-    video.setAttribute('playsinline', '');
-    video.srcObject = stream;
-    video.play();
+        console.log('orientation: ' + window.orientation)
+        console.log('W: ' +WW +', ' + WH)
+        
+        const settings = stream.getTracks()[0].getSettings();
+        let VW = settings.width;
+        let VH = settings.height;
 
-    src = new cv.Mat(VH, VW, cv.CV_8UC4);
-    dst = new cv.Mat(VH, VW, cv.CV_8UC4);
-    let cap = new cv.VideoCapture(video);
-
-    let scale;
-    if (window.orientation === 0 || window.orientation === undefined)
-        scale = new cv.Size(WH*VW/VH, WH)
-    else
-        scale = new cv.Size(WW, WW/VW*VH)
-
-    const FPS = 30;
-    function processVideo() {
-        try {
-            if (prevori != window.orientation) {
-                console.log('reloading')
-                $(window).one('resize', function () {
-                    onCvLoaded();
-                });
-                return;
-            }
-            let begin = Date.now();
-            cap.read(src);
-            if ($('#chkmirror')[0].checked)
-                cv.flip(src, src, +1)
-            apply_algos(src, dst)
-            
-            cv.resize(dst, dst, scale, 0, 0, cv.INTER_AREA);
-            //dst = dst.roi(rect);
-            cv.imshow("canvasOutput", dst);
-            let delay = 1000 / FPS - (Date.now() - begin);
-            if (delay < 0) delay = 0;
-
-            lastTimeout = setTimeout(processVideo, delay);
-        } catch (err) {
-            $('#status').text('Error: ' + err);
-            console.log(err);
-            console.error(err);
+        if (window.orientation === 0 && VW > VH) { // ici
+            console.log('res swap')
+            VW = settings.height;
+            VH = settings.width;
         }
-    }
+        if (window.orientation === 90 && VH > VW) { // ici
+            console.log('res swap')
+            VW = settings.height;
+            VH = settings.width;
+        }
 
-    // schedule the first one.
-    lastTimeout = setTimeout(processVideo, 0);
+        console.log('V: '+VW + ', ' + VH)
+        
+        const video = document.getElementById("videoInput"); 
+        video.width  = VW;
+        video.height = VH;
+        video.setAttribute('autoplay', '');
+        video.setAttribute('muted', '');
+        video.setAttribute('playsinline', '');
+        video.srcObject = stream;
+        video.play();
+
+        src = new cv.Mat(VH, VW, cv.CV_8UC4);
+        dst = new cv.Mat(VH, VW, cv.CV_8UC4);
+        let cap = new cv.VideoCapture(video);
+
+        let scale;
+        if (window.orientation === 0 || window.orientation === undefined)
+            scale = new cv.Size(WH*VW/VH, WH)
+        else
+            scale = new cv.Size(WW, WW/VW*VH)
+
+        const FPS = 30;
+        let cnt = 0;
+
+        function processVideo() {
+            try {
+                if (prevori != window.orientation) {
+                    console.log('reloading')
+                    $(window).one('resize', function () {
+                        onCvLoaded();
+                    });
+                    return;
+                }
+                let begin = Date.now();
+                cap.read(src);
+                if ($('#chkmirror')[0].checked)
+                    cv.flip(src, src, +1)
+                apply_algos(src, dst)
+                
+                cv.resize(dst, dst, scale, 0, 0, cv.INTER_AREA);
+                //dst = dst.roi(rect);
+                cv.imshow("canvasOutput", dst);
+
+                if (gifrec && cnt%1==0) {
+                    captureFrame()
+                }
+
+                let delay = 1000 / FPS - (Date.now() - begin);
+                if (delay < 0) delay = 0;
+                cnt++;
+                if (cnt >= 1000) cnt = 0; // reset
+                lastTimeout = setTimeout(processVideo, delay);
+            } catch (err) {
+                $('#status').text('Error: ' + err);
+                console.log(err);
+            }
+        }
+
+        // schedule the first one.
+        lastTimeout = setTimeout(processVideo, 0);
+
+
+    } catch (err) {
+        console.log(err);
+        if (gifrec)
+            gifw_onerror();
+        $("#uiform :input").prop("disabled", true);
+        $('#status').text(err);
+    }
+}
+
+function captureFrame() {
+    try {
+        let imdata = null;
+        const canvas = $('#canvasOutput')[0];
+        let w = canvas.width;
+        let h = canvas.height;
+        if (w > 600 || h > 600) {
+            // resize is necessary
+            const smallCanvas = document.createElement('canvas');
+            const smallContext = smallCanvas.getContext("2d");
+            let sf = 1;
+            const r = (w/h);
+            if (w > 600) {
+                w = 600;
+                h = Math.ceil(600 / r);
+                sf = w / canvas.width;
+            }
+            if (h > 600) {
+                h = 600;
+                w = Math.ceil(600 * r);
+                sf = h / canvas.height
+            }
+            smallCanvas.width = w
+            smallCanvas.height = h;
+            smallContext.scale(sf, sf);
+            smallContext.drawImage(canvas, 0, 0);        
+            imdata = smallContext.getImageData(0, 0, w, h).data;
+        } else {
+            imdata = canvas.getContext('2d').getImageData(0,0,w,h).data;
+        }
+        gifw.postMessage({
+            op:'frame',
+            height: h,
+            width: w,
+            data: imdata
+        });
+    } catch (e) {
+        console.log(e)
+    }
 }
 
 function apply_algos(src, dst) {
