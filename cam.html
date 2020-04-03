@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes">
+        
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+
+        <script src="opencv.js" type="text/javascript"></script>
+
+        <style>
+            html,body{
+                margin:0 auto;
+                padding:0 auto;
+            }
+        </style>
+    </head>
+    <body>
+        <span id="loader">loading...</span>
+        <canvas id="canvasOutput"></canvas><br>
+        <video id="videoInput" style="display: none;"></video><br>
+        <form style="max-width:600px">
+        
+            <select id="algoselect">
+                <option value="default" selected>default</option>
+                <option value="grayscale">grayscale</option>
+                <option value="canny">canny</option>
+                <option value="canny-xl">canny XL</option>
+            </select>
+
+            <label> <input type="checkbox" id="chkfacingmode" checked='checked'>Front camera </label>
+            <label> <input type="checkbox" id="chkmirror">Mirror </label>
+
+            
+        </form>
+
+        <div id="log"></div>
+        <br>
+
+        <script>
+            $.holdReady(true);
+            $.getScript("main.js?v="+ (new Date()).getTime(), function() {
+                 $.holdReady(false);
+            });
+        </script>
+    </body>
+
+</html>

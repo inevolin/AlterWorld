@@ -11,26 +11,69 @@ function htmlLog() {
     }
 }
 
-
+const is_mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+console.log('is_mobile: ' + is_mobile)
 let lastTimeout = null;
 
-cv['onRuntimeInitialized']=()=>{
-    window.scrollTo(0, 1);
-    onCvLoaded();
 
-    $(window).on("orientationchange", function(e) {
-        clearInterval(lastTimeout);
-        $(window).one('resize', function() {
-            onCvLoaded()
+
+$(document).on('ready', function() {
+    console.log('doc ready')
+    uiElements();
+
+    cv['onRuntimeInitialized']=()=>{
+        window.scrollTo(0, 1);
+        onCvLoaded();
+        $('#loader').hide();
+        /*
+        $(window).on("orientationchange", function(e) {
+            clearInterval(lastTimeout);
+            $(window).one('resize', function() {
+                onCvLoaded()
+            });
+            
         });
-        
-    });
-}
+        */
+    }
+})
 
-$("#canvasOutput").dblclick(function() {
-    const elem = $("#canvasOutput")[0];
-    toggleFullscreen(elem);
-});
+function getL(id) {
+    const t = localStorage.getItem(id);
+    console.log('LS: ' + id+': ' + t)
+    return t !== undefined && t !== null;
+}
+function uiElements() {
+
+    if (!is_mobile) {
+        $('#chkfacingmode').parent().hide();
+        $("#chkfacingmode").prop('checked', false);
+    }
+
+    if (getL('algoselect'))
+        $("#algoselect").val(localStorage.getItem('algoselect'))
+    if (getL('chkfacingmode'))  {
+        $("#chkfacingmode").prop('checked', localStorage.getItem('chkfacingmode')=='true')
+    }
+    if (getL('chkmirror'))
+        $("#chkmirror").prop('checked', localStorage.getItem('chkmirror')=='true')
+
+    $("#canvasOutput").dblclick(function() {
+        toggleFullscreen( $("#canvasOutput")[0] );
+    });
+
+    $("#algoselect").change(function () {
+        localStorage.setItem('algoselect', $('#algoselect').val());
+    })
+    
+    $('#chkfacingmode').on('click', function() {
+        localStorage.setItem('chkfacingmode', $("#chkfacingmode")[0].checked);
+        location.reload();
+    })
+
+    $('#chkmirror').on('click', function() {
+        localStorage.setItem('chkmirror', $('#chkmirror')[0].checked);
+    })
+}
 
 function onCvLoaded() {
     let WW = $(window).width();
@@ -41,7 +84,9 @@ function onCvLoaded() {
         WW = tmp;
     }
 
-    const videoCfg = { facingMode: 'environment' }
+    const videoCfg = {}
+    videoCfg['facingMode'] = $('#chkfacingmode')[0].checked ? 'user' : 'environment';
+    console.log('facingMode: ' + videoCfg['facingMode'])
     videoCfg['height'] = {ideal:WH/2}
     videoCfg['width'] = {ideal:WW/2}
     navigator.mediaDevices.getUserMedia({
@@ -50,7 +95,7 @@ function onCvLoaded() {
     })
     .then(processStream)
     .catch(function(err) {
-        console.log(err);
+        console.log('error: '+err);
     });
 }
 function toggleFullscreen(elem) {
@@ -90,10 +135,11 @@ function processStream(stream) {
     const video = document.getElementById("videoInput"); 
     video.width  = VW;
     video.height = VH;
-
     video.srcObject = stream;
     video.play();
-
+    processStream_pt2(WW, WH, VW, VH, video)
+}
+function processStream_pt2(WW, WH, VW, VH, video) {
     let src = new cv.Mat(VH, VW, cv.CV_8UC4);
     let dst = new cv.Mat(VH, VW, cv.CV_8UC1);
     let cap = new cv.VideoCapture(video);
@@ -109,13 +155,11 @@ function processStream(stream) {
         try {
             let begin = Date.now();
             cap.read(src);
-            
-            // cv.bitwise_and(src, src, dst) // do noting
-            // f_rgb2gray(src, dst)
-            f_edges(src, dst)
+            if ($('#chkmirror')[0].checked)
+                cv.flip(src, src, +1)
+            apply_algos(src, dst)
             
             cv.resize(dst, dst, scale, 0, 0, cv.INTER_AREA);
-            
             //dst = dst.roi(rect);
             cv.imshow("canvasOutput", dst);
             let delay = 1000 / FPS - (Date.now() - begin);
@@ -132,9 +176,19 @@ function processStream(stream) {
     lastTimeout = setTimeout(processVideo, 0);
 }
 
-function f_rgb2gray(src, dst) {
-    cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
-}
-function f_edges(src, dst) {
-    cv.Canny(src, dst, 50, 75)
+function apply_algos(src, dst) {
+    const qalgo = $("#algoselect").val();
+    switch(qalgo) {
+        case 'grayscale':
+            cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+            break;
+        case 'canny':
+            cv.Canny(src, dst, 50, 75)
+            break;
+        case 'canny-xl':
+            cv.Canny(src, dst, 5, 15)
+            break;
+        default:
+            cv.bitwise_and(src, src, dst)
+    }
 }
