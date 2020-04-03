@@ -134,8 +134,8 @@ function onCvLoaded() {
     const videoCfg = {}
     videoCfg['facingMode'] = $('#chkfacingmode')[0].checked ? 'user' : 'environment';
     console.log('facingMode: ' + videoCfg['facingMode'])
-    videoCfg['height'] = {ideal:WH*qualityRatio}
-    videoCfg['width'] = {ideal:WW*qualityRatio}
+    videoCfg['height'] = WH*qualityRatio
+    videoCfg['width'] = WW*qualityRatio
     console.log('qualityRatio: '+  qualityRatio)
     navigator.mediaDevices.getUserMedia({
         video: videoCfg,
@@ -184,7 +184,8 @@ function processStream(_stream) {
     let VW = settings.width;
     let VH = settings.height;
 
-    if (window.orientation == 0) {
+    if (window.orientation == 0 && VW > VH) { // ici
+        console.log('swap')
         VW = settings.height;
         VH = settings.width;
     }
