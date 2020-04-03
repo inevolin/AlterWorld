@@ -156,10 +156,15 @@ function uiElements() {
 }
 
 function downloadFile(name, data) {
-    var link = document.createElement('a');
-    link.download = name;
-    link.href = data;
-    link.click();
+    var link = document.createElement('img');
+    link.src = data;
+    $(link).css({
+        'border': '2px solid green',
+    });
+    $('#dlspace').html(link);
+    $([document.documentElement, document.body]).animate({
+        scrollTop: $("#dlspace").offset().top
+    }, 500);
 }
 
 function checkBrowserCompat() {
