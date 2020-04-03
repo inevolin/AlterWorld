@@ -291,6 +291,9 @@ function apply_algos(src, dst) {
         case 'lchakra':
             a_sobel(src, dst, 19);
             break;
+        case 'golem':
+            a_golem(src, dst);
+            break;
         default:
             cv.bitwise_and(src, src, dst)
     }
@@ -330,4 +333,11 @@ function a_laplacian(src, dst, kernel) {
     cv.Laplacian(mat, dst, cv.CV_8U, kernel, 1, 0, cv.BORDER_DEFAULT);
     cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGBA) // output sould contain 4 channels
     mat.delete();
+}
+
+function a_golem(src, dst) {
+    let kernelSize = 15;
+    let kernel = cv.getStructuringElement(Number(cv.MORPH_RECT), {width: kernelSize, height: kernelSize});
+    cv.morphologyEx(src, dst, cv.MORPH_DILATE, kernel, {x: -1, y: -1}, 1, cv.BORDER_CONSTANT);
+    kernel.delete();
 }
