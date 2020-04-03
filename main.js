@@ -275,6 +275,14 @@ function apply_algos(src, dst) {
         case 'contoursgray':
             a_counters(src, dst);
             cv.cvtColor(dst, dst, cv.COLOR_RGBA2GRAY);
+        case 'sobel3':
+            a_sobel(src, dst, 3);
+            break;
+        case 'sobel15':
+            a_sobel(src, dst, 15);
+            break;
+        case 'sobel19':
+            a_sobel(src, dst, 19);
             break;
         default:
             cv.bitwise_and(src, src, dst)
@@ -298,4 +306,11 @@ function a_counters(src, dst) {
     contours.delete();
     hierarchy.delete();
     dstC3.delete();
+}
+
+function a_sobel(src, dst, kernel) {
+    var mat = new cv.Mat(src.size().height, src.size().width, cv.CV_8UC1);
+    cv.cvtColor(src, mat, cv.COLOR_RGB2GRAY, 0);
+    cv.Sobel(mat, dst, cv.CV_8U, 1, 0, kernel, 1, 0, cv.BORDER_DEFAULT);
+    mat.delete();
 }
