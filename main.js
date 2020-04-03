@@ -276,13 +276,16 @@ function apply_algos(src, dst) {
             a_counters(src, dst);
             cv.cvtColor(dst, dst, cv.COLOR_RGBA2GRAY);
             break;
-        case 'sobel3':
+        case 'innerghost':
             a_sobel(src, dst, 3);
             break;
-        case 'sobel15':
-            a_sobel(src, dst, 15);
+        case 'outerghost':
+            a_laplacian(src, dst, 3);
             break;
-        case 'sobel19':
+        case 'uchakra':
+            a_laplacian(src, dst, 19);
+            break;
+        case 'lchakra':
             a_sobel(src, dst, 19);
             break;
         default:
@@ -314,6 +317,14 @@ function a_sobel(src, dst, kernel) {
     var mat = new cv.Mat(src.size().height, src.size().width, cv.CV_8UC1);
     cv.cvtColor(src, mat, cv.COLOR_RGB2GRAY, 0);
     cv.Sobel(mat, dst, cv.CV_8U, 1, 0, kernel, 1, 0, cv.BORDER_DEFAULT);
+    cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGBA) // output sould contain 4 channels
+    mat.delete();
+}
+
+function a_laplacian(src, dst, kernel) {
+    var mat = new cv.Mat(src.size().height, src.size().width, cv.CV_8UC1);
+    cv.cvtColor(src, mat, cv.COLOR_RGB2GRAY);
+    cv.Laplacian(mat, dst, cv.CV_8U, kernel, 1, 0, cv.BORDER_DEFAULT);
     cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGBA) // output sould contain 4 channels
     mat.delete();
 }
