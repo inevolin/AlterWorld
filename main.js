@@ -206,7 +206,7 @@ function processStream(_stream) {
     video.play();
 
     src = new cv.Mat(VH, VW, cv.CV_8UC4);
-    dst = new cv.Mat(VH, VW, cv.CV_8UC1);
+    dst = new cv.Mat(VH, VW, cv.CV_8UC4);
     let cap = new cv.VideoCapture(video);
 
     let scale;
@@ -275,6 +275,7 @@ function apply_algos(src, dst) {
         case 'contoursgray':
             a_counters(src, dst);
             cv.cvtColor(dst, dst, cv.COLOR_RGBA2GRAY);
+            break;
         case 'sobel3':
             a_sobel(src, dst, 3);
             break;
@@ -306,11 +307,13 @@ function a_counters(src, dst) {
     contours.delete();
     hierarchy.delete();
     dstC3.delete();
+    cv.cvtColor(dst, dst, cv.COLOR_RGB2RGBA) // output should contain 4 channels
 }
 
 function a_sobel(src, dst, kernel) {
     var mat = new cv.Mat(src.size().height, src.size().width, cv.CV_8UC1);
     cv.cvtColor(src, mat, cv.COLOR_RGB2GRAY, 0);
     cv.Sobel(mat, dst, cv.CV_8U, 1, 0, kernel, 1, 0, cv.BORDER_DEFAULT);
+    cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGBA) // output sould contain 4 channels
     mat.delete();
 }
