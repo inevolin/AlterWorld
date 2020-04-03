@@ -108,6 +108,7 @@ function checkBrowserCompat() {
 }
 
 function onCvLoaded() {
+    prevori = window.orientation; // important
     if(lastTimeout != null) clearTimeout(lastTimeout);
     abortStream();
 
@@ -165,6 +166,7 @@ function toggleFullscreen(elem) {
 let src = null;
 let dst = null;
 let stream = null;
+let prevori = window.orientation;
 function abortStream() {
     if (stream == null) return;
     stream.getTracks().forEach(function(track) {
@@ -184,8 +186,13 @@ function processStream(_stream) {
     let VW = settings.width;
     let VH = settings.height;
 
-    if (window.orientation == 0 && VW > VH) { // ici
-        console.log('swap')
+    if (window.orientation === 0 && VW > VH) { // ici
+        console.log('res swap')
+        VW = settings.height;
+        VH = settings.width;
+    }
+    if (window.orientation === 90 && VH > VW) { // ici
+        console.log('res swap')
         VW = settings.height;
         VH = settings.width;
     }
@@ -211,6 +218,13 @@ function processStream(_stream) {
     const FPS = 30;
     function processVideo() {
         try {
+            if (prevori != window.orientation) {
+                console.log('reloading')
+                $(window).one('resize', function () {
+                    onCvLoaded();
+                });
+                return;
+            }
             let begin = Date.now();
             cap.read(src);
             if ($('#chkmirror')[0].checked)
