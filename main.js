@@ -254,7 +254,33 @@ function apply_algos(src, dst) {
             cv.adaptiveThreshold(mat, dst, 200, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, blocksize, 2);
             mat.delete();
             break;
+        case 'contours':
+            a_counters(src, dst);
+            break;
+        case 'contoursgray':
+            a_counters(src, dst);
+            cv.cvtColor(dst, dst, cv.COLOR_RGBA2GRAY);
+            break;
         default:
             cv.bitwise_and(src, src, dst)
     }
+}
+
+function a_counters(src, dst) {
+    cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+    cv.threshold(dst, dst, 120, 200, cv.THRESH_BINARY);
+    let contours  = new cv.MatVector();
+    let hierarchy = new cv.Mat();
+    cv.findContours(dst, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
+    
+    let dstC3 = cv.Mat.ones(src.size().height, src.size().width, cv.CV_8UC3);
+    for (let i = 0; i<contours.size(); ++i)
+    {
+        let color = new cv.Scalar(Math.round(Math.random() * 255), Math.round(Math.random() * 255), Math.round(Math.random() * 255));
+        cv.drawContours(dstC3, contours, i, color, 1, cv.LINE_8, hierarchy);
+    }
+    dstC3.copyTo(dst);
+    contours.delete();
+    hierarchy.delete();
+    dstC3.delete();
 }
