@@ -77,6 +77,16 @@ function uiElements() {
         // location.reload();
         onCvLoaded();
     })
+
+
+    
+    $('#dlcanvas').on('click', function() {
+        var link = document.createElement('a');
+        link.download = 'alterworld_'+$('#algoselect option:selected').text().replace(/[^a-zA-Z0-9]+/g, '')+'.png';
+        link.href = document.getElementById('canvasOutput').toDataURL()
+        link.click();
+        link.parentNode.removeChild(link);
+    })
 }
 
 function checkBrowserCompat() {
