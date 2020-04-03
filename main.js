@@ -15,8 +15,6 @@ const is_mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini
 console.log('is_mobile: ' + is_mobile)
 let lastTimeout = null;
 
-
-
 $(document).on('ready', function() {
     console.log('doc ready')
     uiElements();
@@ -25,15 +23,6 @@ $(document).on('ready', function() {
         window.scrollTo(0, 1);
         onCvLoaded();
         $('#loader').hide();
-        /*
-        $(window).on("orientationchange", function(e) {
-            clearInterval(lastTimeout);
-            $(window).one('resize', function() {
-                onCvLoaded()
-            });
-            
-        });
-        */
     }
 })
 
@@ -51,9 +40,11 @@ function uiElements() {
 
     if (getL('algoselect'))
         $("#algoselect").val(localStorage.getItem('algoselect'))
-    if (getL('chkfacingmode'))  {
+    if (getL('quality'))
+        $("#quality").val(localStorage.getItem('quality'))
+
+    if (getL('chkfacingmode'))
         $("#chkfacingmode").prop('checked', localStorage.getItem('chkfacingmode')=='true')
-    }
     if (getL('chkmirror'))
         $("#chkmirror").prop('checked', localStorage.getItem('chkmirror')=='true')
 
@@ -73,6 +64,11 @@ function uiElements() {
     $('#chkmirror').on('click', function() {
         localStorage.setItem('chkmirror', $('#chkmirror')[0].checked);
     })
+
+    $("#quality").change(function () {
+        localStorage.setItem('quality', $('#quality').val());
+        location.reload();
+    })
 }
 
 function onCvLoaded() {
@@ -83,12 +79,25 @@ function onCvLoaded() {
         WH = WW;
         WW = tmp;
     }
+    let qualityRatio = 0.3;
+    switch($('#quality').val()) {
+        case 'low':
+            qualityRatio = 0.3
+            break;
+        case 'medium':
+            qualityRatio = 0.6
+            break;
+        case 'high':
+            qualityRatio = 1
+            break;
+    }
 
     const videoCfg = {}
     videoCfg['facingMode'] = $('#chkfacingmode')[0].checked ? 'user' : 'environment';
     console.log('facingMode: ' + videoCfg['facingMode'])
-    videoCfg['height'] = {ideal:WH/2}
-    videoCfg['width'] = {ideal:WW/2}
+    videoCfg['height'] = {ideal:WH*qualityRatio}
+    videoCfg['width'] = {ideal:WW*qualityRatio}
+    console.log('qualityRatio: '+  qualityRatio)
     navigator.mediaDevices.getUserMedia({
         video: videoCfg,
         audio: false,
@@ -137,15 +146,13 @@ function processStream(stream) {
     video.height = VH;
     video.srcObject = stream;
     video.play();
-    processStream_pt2(WW, WH, VW, VH, video)
-}
-function processStream_pt2(WW, WH, VW, VH, video) {
+
     let src = new cv.Mat(VH, VW, cv.CV_8UC4);
     let dst = new cv.Mat(VH, VW, cv.CV_8UC1);
     let cap = new cv.VideoCapture(video);
 
     let scale;
-    if (window.orientation === 0 || window.orientation === undefined)
+    if (window.orientation === 0 ) // || window.orientation === undefined
         scale = new cv.Size(WH*VW/VH, WH)
     else
         scale = new cv.Size(WW, WW/VW*VH)
@@ -183,10 +190,10 @@ function apply_algos(src, dst) {
             cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
             break;
         case 'canny':
-            cv.Canny(src, dst, 50, 75)
+            cv.Canny(src, dst, 75, 100)
             break;
         case 'canny-xl':
-            cv.Canny(src, dst, 5, 15)
+            cv.Canny(src, dst, 50, 75)
             break;
         default:
             cv.bitwise_and(src, src, dst)

@@ -21,14 +21,21 @@
         <video id="videoInput" style="display: none;"></video><br>
         <form style="max-width:600px">
         
-            <select id="algoselect">
+            <select id="algoselect" style="min-width:300px;">
                 <option value="default" selected>default</option>
                 <option value="grayscale">grayscale</option>
                 <option value="canny">canny</option>
                 <option value="canny-xl">canny XL</option>
             </select>
+            <br>
 
-            <label> <input type="checkbox" id="chkfacingmode" checked='checked'>Front camera </label>
+            <select id="quality">
+                <option value="low" selected>low q</option>
+                <option value="medium">medium q</option>
+                <option value="high">high q</option>
+            </select>
+
+            <label> <input type="checkbox" id="chkfacingmode" checked='checked'>Cam side </label>
             <label> <input type="checkbox" id="chkmirror">Mirror </label>
 
             
