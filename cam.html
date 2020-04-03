@@ -16,7 +16,7 @@
         </style>
     </head>
     <body>
-        <span id="loader">loading...</span>
+        <span id="status">loading...</span>
         <canvas id="canvasOutput"></canvas><br>
         <video id="videoInput" style="display: none;"></video><br>
         <form style="max-width:600px">
@@ -27,7 +27,7 @@
                 <option value="canny">canny</option>
                 <option value="canny-xl">canny XL</option>
             </select>
-            <br>
+            <br><br>
 
             <select id="quality">
                 <option value="low" selected>low q</option>
@@ -35,7 +35,7 @@
                 <option value="high">high q</option>
             </select>
 
-            <label> <input type="checkbox" id="chkfacingmode" checked='checked'>Cam side </label>
+            <label> <input type="checkbox" id="chkfacingmode" checked='checked'>Frontal </label>
             <label> <input type="checkbox" id="chkmirror">Mirror </label>
 
             

@@ -16,13 +16,19 @@ console.log('is_mobile: ' + is_mobile)
 let lastTimeout = null;
 
 $(document).on('ready', function() {
-    console.log('doc ready')
+    console.log('document ready')
     uiElements();
+    if (!checkBrowserCompat()) {
+        console.log('checkBrowserCompat: fail')
+        return;
+    } else {
+        console.log('checkBrowserCompat: succeed')
+    }
 
     cv['onRuntimeInitialized']=()=>{
         window.scrollTo(0, 1);
         onCvLoaded();
-        $('#loader').hide();
+        $('#status').text('');
     }
 })
 
@@ -71,6 +77,34 @@ function uiElements() {
     })
 }
 
+function checkBrowserCompat() {
+    let features = {webrtc: true, wasm: true};
+    let wasmSupported = true, webrtcSupported = true;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        webrtcSupported = false;
+    }
+    if (features.wasm && !window.WebAssembly) {
+        wasmSupported = false;
+    }
+    if (!webrtcSupported || !wasmSupported) {
+        var text = "Your web browser doesn't support ";
+        var len = text.length;
+        if (!webrtcSupported) {
+            text += "WebRTC";
+        }
+        if (!wasmSupported) {
+        if (text.length > len) {
+            text += " and ";
+        }
+            text += "WebAssembly"
+        }
+            text += ".";
+        $('#status').text(text);
+        return false;
+    }
+    return true;
+}
+
 function onCvLoaded() {
     let WW = $(window).width();
     let WH = $(window).height();
@@ -104,6 +138,7 @@ function onCvLoaded() {
     })
     .then(processStream)
     .catch(function(err) {
+        $('#status').text(err);
         console.log('error: '+err);
     });
 }
