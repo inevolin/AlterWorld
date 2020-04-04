@@ -9,6 +9,7 @@ function debuggingStuff() {
 function htmlLog() {
     var log = console.log;
     var logs = document.getElementById('log');
+    logs.innerHTML += '------ logging ------<br />';
     console.log = function(){
         var args = Array.from(arguments);
         for (var i = 0; i < args.length; i++) {
@@ -30,64 +31,69 @@ let lastTimeout = null;
 const FPS = 30;
 let recDelay = 1000/FPS;
 
+let gifw2=null;
 let gifrec = false;
-let gifw = null;
 const GIF_MAX_DUR_SEC = 15; // s
 let gif_frame_cnt = 0;
 let gif_frame_delay_sum = 0;
+let gif_t_startRender;
 
-function gifw_init() {
-    gifw = new Worker('gifworker.js');
-    gifw.onmessage = gifw_onmessage;
-    gifw.onerror = gifw_onerror;
-}
-const gifw_onmessage = function(e) {
-    if ('gif' in e.data) {
-        $("#recordcanvas").prop("disabled", false);
-        $('#recordcanvas').val('start recording');
-        const name = 'alterworld_'+$('#algoselect option:selected').text().replace(/[^a-zA-Z0-9]+/g, '')+'.gif';
-        const data = URL.createObjectURL(new Blob([new Uint8Array(e.data.gif)], {type : "image/gif" } ));
-        downloadFile(name, data);
-    } else if ('abort' in e.data) {
-        console.log('gif abort received')
-        stopRec();
-    }
-};
-const gifw_onerror = function(e) {
-    console.log(e)
-    if (gifw)
-        gifw.terminate();
-    gifw = null;
-    stopRec();
-    gifw_init();
-    alert('gif recording failed');
+const gifw2_onerror = function(e) {
+    console.log(e);
+    gifrec = false;
+    if (gifw2) gifw2.abort();
+    gifw2 = null;
     $("#recordcanvas").prop("disabled", false);
-    $('#recordcanvas').val('start recording');
+    $('#recordcanvas').val('🎥 start recording');
+    $('#chkfacingmode, #quality').prop('disabled', false);
+    alert('gif recording failed');
 };
 
 function startRec() {
     gifrec = true;
     gif_frame_cnt = 0;
     gif_frame_delay_sum = 0;
-    $('#recordcanvas').val('stop recording');
-    if(gifw) {
-        console.log('approx fps: ' + Math.floor(1000/recDelay))
-        gifw.postMessage({op: 'start', delay: recDelay});
-    }
+    gif_t_startRender = 0;
+    $('#recordcanvas').val('🔴 stop recording');
+    $('#chkfacingmode, #quality').prop('disabled', true); // disallow while recording
+    console.log('approx fps: ' + Math.floor(1000/recDelay));
+    gifw2 = new GIF({
+        workers:4,
+        quality:10,
+        // debug: true,
+    })
+
+    gifw2.on('finished', function(blob) {
+        try {
+            console.log('rendering took ' + (performance.now()-gif_t_startRender) + ' ms');
+            $("#recordcanvas").prop("disabled", false);
+            $('#recordcanvas').val('🎥 start recording');
+            $('#chkfacingmode, #quality').prop('disabled', false);
+            const data = URL.createObjectURL(blob);
+            addDlSpace(data);
+        } catch (e) {
+            gifw2_onerror(e)
+        }
+    })
+    gifw2.on('progress', function(p) {
+        $('#recordcanvas').val('⚙ rendering ('+Math.floor(p*100)+'%)');
+    })
 }
 function stopRec() {
-    gifrec = false;
-    $("#recordcanvas").prop("disabled", true);
-    if (gifw) {
-        console.log('recorded ' + gif_frame_cnt + ' frames')
-        $('#recordcanvas').val('rendering... (' + gif_frame_cnt + ' frames @ ca.' + Math.floor(1000/recDelay) + ' fps)');
-        gifw.postMessage({op: 'stop'})
+    try {
+        console.log('stoprec called');
+        gifrec = false;
+        $("#recordcanvas").prop("disabled", true);
+        console.log('rendering... (' + gif_frame_cnt + ' frames @ ca.' + Math.floor(1000/recDelay) + ' fps)')
+        gif_t_startRender = performance.now();
+        gifw2.render()
+    } catch (e) {
+        gifw2_onerror(e)
     }
 }
 
 $(document).on('ready', function() {
     console.log('document ready')
-    gifw_init();
     uiElements();
     if (!checkBrowserCompat()) {
         console.log('checkBrowserCompat: fail')
@@ -106,6 +112,16 @@ function getL(id) {
     console.log('LS: ' + id+': ' + t)
     return t !== undefined && t !== null;
 }
+
+$.fn.center = function () {
+    this.css("position","absolute");
+    this.css("top", Math.max(0, (($(window).height() - $(this).outerHeight()) / 2) + 
+                                                $(window).scrollTop()) + "px");
+    this.css("left", Math.max(0, (($(window).width() - $(this).outerWidth()) / 2) + 
+                                                $(window).scrollLeft()) + "px");
+    return this;
+}
+
 function uiElements() {
     $("#uiform :input").prop("disabled", true);
     if (!is_mobile) {
@@ -148,27 +164,34 @@ function uiElements() {
     })
     
     $('#dlcanvas').on('click', function() {
-        const name = 'alterworld_'+$('#algoselect option:selected').text().replace(/[^a-zA-Z0-9]+/g, '')+'.png';
         const data = document.getElementById('canvasOutput').toDataURL();
-        downloadFile(name, data);
+        addDlSpace(data);
     })
 
     $('#recordcanvas').on('click', function() {
         if (!gifrec) startRec();
         else stopRec();
     })
+
+    $('#cleardlspace').on('click', function() {
+        $('#dlspace').empty();
+    })
 }
 
-function downloadFile(name, data) {
+function addDlSpace(data) {
     var link = document.createElement('img');
     link.src = data;
     $(link).css({
-        'border': '2px solid green',
+        'max-width': '47%',
+        'padding': '2px',
     });
-    $('#dlspace').html(link);
-    $([document.documentElement, document.body]).animate({
-        scrollTop: $("#dlspace").offset().top
-    }, 500);
+    $('#dlspace').prepend(link);
+    var pop = $('#imgok');
+    $(pop).css({
+        'z-index': 9999999,
+    }).center();
+    pop.show();
+    pop.fadeToggle(600, () => pop.hide());
 }
 
 function checkBrowserCompat() {
@@ -327,6 +350,7 @@ function processStream(_stream) {
                 }
 
                 ///////////////////////////////
+                let t2 = performance.now();
                 if(stats) stats.begin();
 
                 cap.read(src);
@@ -344,11 +368,11 @@ function processStream(_stream) {
                 let t1 = performance.now();
                 if(stats) stats.end();
                 recDelay = t1 - t0;
+                let gfxMs = t2 - t1;
                 t0 = t1;
                 ///////////////////////////////
-                // if (gifrec) console.log('.recDelay: ' + recDelay);
 
-                let delay = 1000 / FPS - recDelay;
+                let delay = 1000 / FPS - gfxMs;
                 if (delay < 0) delay = 0;
 
                 lastTimeout = setTimeout(processVideo, delay);
@@ -361,11 +385,9 @@ function processStream(_stream) {
         // schedule the first one.
         lastTimeout = setTimeout(processVideo, 0);
 
-
     } catch (err) {
         console.log(err);
-        if (gifrec)
-            gifw_onerror();
+        if (gifrec) gifw2_onerror(err);
         $("#uiform :input").prop("disabled", true);
         $('#status').text(err);
     }
@@ -377,6 +399,7 @@ async function captureFrame() {
         if (gif_frame_delay_sum/1000 >= GIF_MAX_DUR_SEC) {
             console.log('GIF_MAX_DUR_SEC reached')
             stopRec();
+            return;
         }
         gif_frame_cnt++;
         gif_frame_delay_sum += recDelay;
@@ -385,7 +408,7 @@ async function captureFrame() {
         const canvas = $('#canvasOutput')[0];
         let w = canvas.width;
         let h = canvas.height;
-        if (w > 600 || h > 600) {
+        if (false) {// w > 600 || h > 600) {
             // resize is necessary
             const smallCanvas = document.createElement('canvas');
             const smallContext = smallCanvas.getContext("2d");
@@ -405,19 +428,16 @@ async function captureFrame() {
             smallCanvas.height = h;
             smallContext.scale(sf, sf);
             smallContext.drawImage(canvas, 0, 0);        
-            imdata = smallContext.getImageData(0, 0, w, h).data;
+            imdata = smallContext.getImageData(0, 0, w, h);
         } else {
-            imdata = canvas.getContext('2d').getImageData(0,0,w,h).data;
+            imdata = canvas.getContext('2d').getImageData(0,0,w,h);
         }
-        gifw.postMessage({
-            op:'frame',
-            delay:recDelay,
-            height: h,
-            width: w,
-            data: imdata
-        });
+        if (gifw2)
+            gifw2.addFrame(imdata, {copy: true, delay: recDelay})
+
     } catch (e) {
-        console.log(e)
+        gifw2_onerror(e);
+        throw e;
     }
 }
 
