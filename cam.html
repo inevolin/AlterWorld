@@ -14,9 +14,13 @@
 
         <style>
             html,body{
-                margin:0 auto;
-                padding:0 auto;
+                margin:0;
+                padding:0;
             }
+            html {
+                overflow-y: scroll;
+            }
+
         </style>
     </head>
     <body>
@@ -29,8 +33,8 @@
         <br>
 
         <form style="max-width:600px" id="uiform">
-            <label> <input type="button" id="dlcanvas" value="&#128444; screenshot"> </label>
-            <label> <input type="button" id="recordcanvas" value="&#127909; start recording"> </label> <span id="lblfps"></span>
+            <label> <input type="button" id="dlcanvas" value="📷 screenshot"> </label>
+            <label> <input type="button" id="recordcanvas" value="🎥 start recording"> </label> <span id="lblfps" style="font-size: 11px;"></span>
             <br>
             <br>
             <select id="algoselect" style="min-width:300px;">
@@ -43,8 +47,6 @@
                 <option value="contoursgray">sad disco</option>
                 <option value="innerghost">inner ghost</option>
                 <option value="outerghost">outer ghost</option>
-                <option value="uchakra">upper chakra</option>
-                <option value="lchakra">lower chakra</option>
                 <option value="golem">golem</option>
                 <!-- <option value="test">test</option> -->
             </select>

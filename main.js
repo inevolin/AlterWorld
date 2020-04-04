@@ -16,7 +16,7 @@ function htmlLog() {
             let line = args[i];
             if (typeof args[i] == 'object')
                 line = JSON.stringify(args[i])
-            logs.innerHTML += line + '<br />';
+            logs.innerHTML = line + '<br />' + logs.innerHTML;
         }
         log.apply(console, args);
     }
@@ -26,7 +26,6 @@ function htmlLog() {
 
 const is_mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 console.log('is_mobile: ' + is_mobile)
-let lastTimeout = null;
 
 const FPS = 30;
 let recDelay = 1000/FPS;
@@ -149,7 +148,6 @@ function uiElements() {
     
     $('#chkfacingmode').on('click', function() {
         localStorage.setItem('chkfacingmode', $("#chkfacingmode")[0].checked);
-        // location.reload();
         onCvLoaded();
     })
 
@@ -159,7 +157,6 @@ function uiElements() {
 
     $("#quality").change(function () {
         localStorage.setItem('quality', $('#quality').val());
-        // location.reload();
         onCvLoaded();
     })
     
@@ -223,8 +220,8 @@ function checkBrowserCompat() {
 }
 
 function onCvLoaded() {
+    console.log('--------------')
     prevori = window.orientation; // important
-    if(lastTimeout != null) clearTimeout(lastTimeout);
     abortStream();
 
     let WW = $(window).width();
@@ -250,8 +247,8 @@ function onCvLoaded() {
     const videoCfg = {}
     videoCfg['facingMode'] = $('#chkfacingmode')[0].checked ? 'user' : 'environment';
     console.log('facingMode: ' + videoCfg['facingMode'])
-    videoCfg['height'] = WH*qualityRatio
-    videoCfg['width'] = WW*qualityRatio
+    videoCfg['height'] = Math.floor(WH*qualityRatio)
+    videoCfg['width'] = Math.floor(WW*qualityRatio)
     console.log('qualityRatio: '+  qualityRatio)
     navigator.mediaDevices.getUserMedia({
         video: videoCfg,
@@ -282,18 +279,19 @@ let src = null;
 let dst = null;
 let stream = null;
 let prevori = window.orientation;
+
 function abortStream() {
     if (stream == null) return;
     stream.getTracks().forEach(function(track) {
         track.stop();
     });
 }
+
 function processStream(_stream) {
     try {
         $("#uiform :input").prop("disabled", false);
         $('#status').text('');
-    
-        
+
         stream = _stream;
 
         let WW = $(window).width();
@@ -332,11 +330,10 @@ function processStream(_stream) {
         dst = new cv.Mat(VH, VW, cv.CV_8UC4);
         let cap = new cv.VideoCapture(video);
 
-        let scale;
-        if (window.orientation === 0) // || window.orientation === undefined
-            scale = new cv.Size(WH*VW/VH, WH)
-        else
-            scale = new cv.Size(WW, WW/VW*VH)
+        // always scale to fit window width
+        let scale = null;
+        scale = new cv.Size(WW, Math.floor(WW/VW*VH))
+        console.log('scaling: ' + WW + ', ' + Math.floor(WW/VW*VH))
 
         let t0 = performance.now();
         function processVideo() {
@@ -348,35 +345,27 @@ function processStream(_stream) {
                     });
                     return;
                 }
+                if (stream.id !== _stream.id)
+                    return console.log('processVideo aborting')
 
-                ///////////////////////////////
-                let tt0 = performance.now();
                 if(stats) stats.begin();
 
                 cap.read(src);
 
-                if ($('#chkmirror')[0].checked)
-                    cv.flip(src, src, +1)
-
+                if ($('#chkmirror')[0].checked) cv.flip(src, src, +1)
                 apply_algos(src, dst)
-                
-                cv.resize(dst, dst, scale, 0, 0, cv.INTER_AREA);
+                if (scale) cv.resize(dst, dst, scale, 0, 0, cv.INTER_AREA);
                 cv.imshow("canvasOutput", dst);
-
                 captureFrame()
 
+                requestAnimationFrame(processVideo);
+
                 let t1 = performance.now();
-                if(stats) stats.end();
                 recDelay = t1 - t0;
-                $('#lblfps').text('('+Math.floor(1000/recDelay) + ' FPS)')
-                let gfxMs = t1 - tt0;
+                // $('#lblfps').text('('+Math.floor(1000/recDelay) + ' FPS)')
+                if(stats) stats.end();
                 t0 = t1;
-                ///////////////////////////////
 
-                let delay = 1000 / FPS - gfxMs;
-                if (delay < 0) delay = 0;
-
-                lastTimeout = setTimeout(processVideo, delay);
             } catch (err) {
                 $('#status').text('Error: ' + err);
                 console.log(err);
@@ -384,7 +373,7 @@ function processStream(_stream) {
         }
 
         // schedule the first one.
-        lastTimeout = setTimeout(processVideo, 0);
+        requestAnimationFrame(processVideo);
 
     } catch (err) {
         console.log(err);
@@ -414,16 +403,16 @@ async function captureFrame() {
             const smallCanvas = document.createElement('canvas');
             const smallContext = smallCanvas.getContext("2d");
             let sf = 1;
-            const r = (w/h);
+            const r = Math.floor(w/h);
             if (w > 600) {
                 w = 600;
-                h = Math.ceil(600 / r);
-                sf = w / canvas.width;
+                h = Math.floor(600 / r);
+                sf = Math.floor(w / canvas.width);
             }
             if (h > 600) {
                 h = 600;
-                w = Math.ceil(600 * r);
-                sf = h / canvas.height
+                w = Math.floor(600 * r);
+                sf = Math.floor(h / canvas.height);
             }
             smallCanvas.width = w
             smallCanvas.height = h;
@@ -449,10 +438,12 @@ function apply_algos(src, dst) {
             cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
             break;
         case 'canny':
-            cv.Canny(src, dst, 75, 100)
+            cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+            cv.Canny(dst, dst, 75, 100)
             break;
         case 'canny-xl':
-            cv.Canny(src, dst, 50, 75)
+            cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+            cv.Canny(dst, dst, 250, 500, 5, true)
             break;
         case 'adagauss':
             let blocksize = 50;
@@ -474,12 +465,6 @@ function apply_algos(src, dst) {
             break;
         case 'outerghost':
             a_laplacian(src, dst, 3);
-            break;
-        case 'uchakra':
-            a_laplacian(src, dst, 19);
-            break;
-        case 'lchakra':
-            a_sobel(src, dst, 19);
             break;
         case 'golem':
             a_golem(src, dst);
