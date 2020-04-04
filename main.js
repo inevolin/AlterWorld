@@ -368,6 +368,7 @@ function processStream(_stream) {
                 let t1 = performance.now();
                 if(stats) stats.end();
                 recDelay = t1 - t0;
+                $('#lblfps').text('('+Math.floor(1000/recDelay) + ' FPS)')
                 let gfxMs = t2 - t1;
                 t0 = t1;
                 ///////////////////////////////
