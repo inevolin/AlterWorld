@@ -32,8 +32,9 @@ let recDelay = 1000/FPS;
 
 let gifrec = false;
 let gifw = null;
-const GIF_MAX_DUR_SEC = 10; // s
+const GIF_MAX_DUR_SEC = 15; // s
 let gif_frame_cnt = 0;
+let gif_frame_delay_sum = 0;
 
 function gifw_init() {
     gifw = new Worker('gifworker.js');
@@ -67,6 +68,7 @@ const gifw_onerror = function(e) {
 function startRec() {
     gifrec = true;
     gif_frame_cnt = 0;
+    gif_frame_delay_sum = 0;
     $('#recordcanvas').val('stop recording');
     if(gifw) {
         console.log('approx fps: ' + Math.floor(1000/recDelay))
@@ -372,11 +374,12 @@ function processStream(_stream) {
 async function captureFrame() {
     if (!gifrec) return;
     try {
-        if (gif_frame_cnt/FPS >= GIF_MAX_DUR_SEC) {
-            console.log('GIF_MAX_DUR_SEC reached: ' + gif_frame_cnt + ' frames at ' + FPS + 'fps')
+        if (gif_frame_delay_sum/1000 >= GIF_MAX_DUR_SEC) {
+            console.log('GIF_MAX_DUR_SEC reached')
             stopRec();
         }
         gif_frame_cnt++;
+        gif_frame_delay_sum += recDelay;
 
         let imdata = null;
         const canvas = $('#canvasOutput')[0];
