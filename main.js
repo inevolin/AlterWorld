@@ -306,12 +306,12 @@ function processStream(_stream) {
         let VW = settings.width;
         let VH = settings.height;
 
-        if (window.orientation === 0 && VW > VH) { // ici
+        if (window.orientation === 0 && VW > VH) {
             console.log('res swap')
             VW = settings.height;
             VH = settings.width;
         }
-        if (window.orientation === 90 && VH > VW) { // ici
+        if (window.orientation === 90 && VH > VW) {
             console.log('res swap')
             VW = settings.height;
             VH = settings.width;
@@ -333,7 +333,7 @@ function processStream(_stream) {
         let cap = new cv.VideoCapture(video);
 
         let scale;
-        if (window.orientation === 0 || window.orientation === undefined)
+        if (window.orientation === 0) // || window.orientation === undefined
             scale = new cv.Size(WH*VW/VH, WH)
         else
             scale = new cv.Size(WW, WW/VW*VH)
@@ -341,7 +341,7 @@ function processStream(_stream) {
         let t0 = performance.now();
         function processVideo() {
             try {
-                if (prevori != window.orientation) {
+                if (prevori != window.orientation && !gifrec) {
                     console.log('reloading')
                     $(window).one('resize', function () {
                         onCvLoaded();
@@ -483,6 +483,9 @@ function apply_algos(src, dst) {
             break;
         case 'golem':
             a_golem(src, dst);
+            break;
+        case 'test':
+            a_sobel(src, dst, 17);
             break;
         default:
             cv.bitwise_and(src, src, dst)
