@@ -350,7 +350,7 @@ function processStream(_stream) {
                 }
 
                 ///////////////////////////////
-                let t2 = performance.now();
+                let tt0 = performance.now();
                 if(stats) stats.begin();
 
                 cap.read(src);
@@ -369,7 +369,7 @@ function processStream(_stream) {
                 if(stats) stats.end();
                 recDelay = t1 - t0;
                 $('#lblfps').text('('+Math.floor(1000/recDelay) + ' FPS)')
-                let gfxMs = t2 - t1;
+                let gfxMs = t1 - tt0;
                 t0 = t1;
                 ///////////////////////////////
 
