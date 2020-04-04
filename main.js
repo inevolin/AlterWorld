@@ -1,6 +1,6 @@
 
 let stats = null;
-function debugingStuff() {
+function debuggingStuff() {
     stats = new Stats();
     stats.showPanel( 0 ); // 0: fps, 1: ms, 2: mb, 3+: custom
     document.body.appendChild( stats.dom );
@@ -21,7 +21,7 @@ function htmlLog() {
     }
 }
 
-// debugingStuff();
+// debuggingStuff();
 
 const is_mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 console.log('is_mobile: ' + is_mobile)
@@ -68,15 +68,17 @@ function startRec() {
     gifrec = true;
     gif_frame_cnt = 0;
     $('#recordcanvas').val('stop recording');
-    if(gifw)
-        gifw.postMessage({op: 'start', delay: 1000/recDelay});
+    if(gifw) {
+        console.log('approx fps: ' + Math.floor(1000/recDelay))
+        gifw.postMessage({op: 'start', delay: recDelay});
+    }
 }
 function stopRec() {
     gifrec = false;
     $("#recordcanvas").prop("disabled", true);
     if (gifw) {
-        console.log('recorded ' + gif_frame_cnt + ' frames at ' + (1000/recDelay) + 'fps')
-        $('#recordcanvas').val('rendering ...');
+        console.log('recorded ' + gif_frame_cnt + ' frames')
+        $('#recordcanvas').val('rendering... (' + gif_frame_cnt + ' frames @ ca.' + Math.floor(1000/recDelay) + ' fps)');
         gifw.postMessage({op: 'stop'})
     }
 }
@@ -311,6 +313,7 @@ function processStream(_stream) {
         else
             scale = new cv.Size(WW, WW/VW*VH)
 
+        let t0 = performance.now();
         function processVideo() {
             try {
                 if (prevori != window.orientation) {
@@ -323,7 +326,6 @@ function processStream(_stream) {
 
                 ///////////////////////////////
                 if(stats) stats.begin();
-                let t0 = performance.now();
 
                 cap.read(src);
 
@@ -335,12 +337,14 @@ function processStream(_stream) {
                 cv.resize(dst, dst, scale, 0, 0, cv.INTER_AREA);
                 cv.imshow("canvasOutput", dst);
 
+                captureFrame()
+
                 let t1 = performance.now();
                 if(stats) stats.end();
                 recDelay = t1 - t0;
+                t0 = t1;
                 ///////////////////////////////
-
-                captureFrame()
+                // if (gifrec) console.log('.recDelay: ' + recDelay);
 
                 let delay = 1000 / FPS - recDelay;
                 if (delay < 0) delay = 0;
@@ -404,6 +408,7 @@ async function captureFrame() {
         }
         gifw.postMessage({
             op:'frame',
+            delay:recDelay,
             height: h,
             width: w,
             data: imdata

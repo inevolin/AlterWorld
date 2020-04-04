@@ -45,6 +45,7 @@ function mproc(m) {
             gif.setSize(data.width, data.height)
             if(!gif.addFrame(data.data, true))
                 throw 'Error on gif_frame';
+            gif.setDelay(data.delay);
             break;
     }
 
