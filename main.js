@@ -397,11 +397,13 @@ function processStream(_stream) {
 
                 let t1 = performance.now();
                 recDelay = t1 - t0;
-                // $('#lblfps').text('('+Math.floor(1000/recDelay) + ' FPS)')
                 if(stats) stats.end();
                 t0 = t1;
-
                 requestAnimationFrame(processVideo);
+                if (urlParams.has('debug')) {
+                    $('#lblfps').text('('+Math.floor(1000/recDelay) + ' FPS)')
+                }
+
             } catch (err) {
                 $('#status').text('Error: ' + err);
                 console.log(err);
