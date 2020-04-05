@@ -191,6 +191,10 @@ function uiElements() {
     })
 
     $('#timedelay').change(function() {
+        if ($("#timedelay").val() > 20)
+            $("#timedelay").val(20)
+        if ($("#timedelay").val() <= 0)
+            $("#timedelay").val(1)
         localStorage.setItem('timedelay', $('#timedelay').val());
     })
     
@@ -403,7 +407,8 @@ function processStream(_stream) {
 
                 apply_algos(src, dst)
 
-                if ($('#timedelay').val() > 1) frameDelayEffect(dst, $('#timedelay').val());
+                if ($('#timedelay').val() > 1 && $('#timedelay').val() <= 20)
+                    frameDelayEffect(dst, $('#timedelay').val());
 
                 let scaled = new cv.Mat(VH, VW, cv.CV_8UC4);
                 if (scale) cv.resize(dst, scaled, scale, 0, 0, cv.INTER_AREA);
