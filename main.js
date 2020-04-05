@@ -1,10 +1,12 @@
-
+let urlParams = new URLSearchParams(window.location.search)
 let stats = null;
 function debuggingStuff() {
     stats = new Stats();
     stats.showPanel( 0 ); // 0: fps, 1: ms, 2: mb, 3+: custom
     document.body.appendChild( stats.dom );
     htmlLog()
+    startEval()
+    $('#algoselect')[0].innerHTML += '<option value="test">test</option>';
 }
 function htmlLog() {
     var log = console.log;
@@ -21,8 +23,27 @@ function htmlLog() {
         log.apply(console, args);
     }
 }
+let evalString = null;
+function startEval() {
+    $.get('eval.js', {}, function(data) {
+        try {
+            let lines = data.split('\n');
+            let evals = []
+            for (let line of lines) {
+                let i = line.indexOf('//');
+                if (i >= 0)
+                    line = line.substring(0, i)
+                evals.push(line)
+            }
+            evalString = evals.join(' ')
+            setTimeout(startEval, 500);
+        } catch (e) {console.log(''+e,e)}
+    }, 'text');
+}
 
-// debuggingStuff();
+if (urlParams.has('debug')) {
+    debuggingStuff();
+}
 
 const is_mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 console.log('is_mobile: ' + is_mobile)
@@ -277,6 +298,8 @@ function toggleFullscreen(elem) {
 
 let src = null;
 let dst = null;
+let fgbg = {h:500, t:16, s:true, obj:null};
+let FH = []
 let stream = null;
 let prevori = window.orientation;
 
@@ -285,6 +308,17 @@ function abortStream() {
     stream.getTracks().forEach(function(track) {
         track.stop();
     });
+}
+
+function fgbgInit(h, t, s) {
+    if (fgbg.h !== h || fgbg.t !== t || fgbg.s !== s) {
+        if (fgbg.obj) fgbg.obj.delete();
+        fgbg.h = h;
+        fgbg.t = t;
+        fgbg.s = s;
+        fgbg.obj = new cv.BackgroundSubtractorMOG2(h, t, s); // should delete manually
+        console.log('new fgbg: ' + h + ', ' + t + ', ' + s)
+    }
 }
 
 function processStream(_stream) {
@@ -336,8 +370,11 @@ function processStream(_stream) {
         console.log('scaling: ' + WW + ', ' + Math.floor(WW/VW*VH))
 
         let t0 = performance.now();
+
         function processVideo() {
             try {
+                if (stream.id !== _stream.id)
+                    return console.log('processVideo aborting')
                 if (prevori != window.orientation && !gifrec) {
                     console.log('reloading')
                     $(window).one('resize', function () {
@@ -345,20 +382,18 @@ function processStream(_stream) {
                     });
                     return;
                 }
-                if (stream.id !== _stream.id)
-                    return console.log('processVideo aborting')
 
                 if(stats) stats.begin();
 
                 cap.read(src);
-
                 if ($('#chkmirror')[0].checked) cv.flip(src, src, +1)
                 apply_algos(src, dst)
-                if (scale) cv.resize(dst, dst, scale, 0, 0, cv.INTER_AREA);
-                cv.imshow("canvasOutput", dst);
-                captureFrame()
 
-                requestAnimationFrame(processVideo);
+                let scaled = new cv.Mat(VH, VW, cv.CV_8UC4);
+                if (scale) cv.resize(dst, scaled, scale, 0, 0, cv.INTER_AREA);
+                cv.imshow("canvasOutput", scaled);
+                scaled.delete()
+                captureFrame()
 
                 let t1 = performance.now();
                 recDelay = t1 - t0;
@@ -366,6 +401,7 @@ function processStream(_stream) {
                 if(stats) stats.end();
                 t0 = t1;
 
+                requestAnimationFrame(processVideo);
             } catch (err) {
                 $('#status').text('Error: ' + err);
                 console.log(err);
@@ -470,10 +506,15 @@ function apply_algos(src, dst) {
             a_golem(src, dst);
             break;
         case 'test':
-            a_sobel(src, dst, 17);
+            try {
+                if (evalString)
+                    eval(evalString)
+            } catch (e) {
+                console.log(''+e)
+            }
             break;
         default:
-            cv.bitwise_and(src, src, dst)
+            src.copyTo(dst)
     }
 }
 
