@@ -152,6 +152,9 @@ function uiElements() {
         $('#chkfacingmode').parent().hide();
         $("#chkfacingmode").prop('checked', false);
     }
+    $("#uiform").submit(function(e){
+        e.preventDefault();
+    });
 
     if (getL('algoselect'))
         $("#algoselect").val(localStorage.getItem('algoselect'))
@@ -162,6 +165,8 @@ function uiElements() {
         $("#chkfacingmode").prop('checked', localStorage.getItem('chkfacingmode')=='true')
     if (getL('chkmirror'))
         $("#chkmirror").prop('checked', localStorage.getItem('chkmirror')=='true')
+    if (getL('timedelay'))
+        $("#timedelay").val(localStorage.getItem('timedelay'))
 
     $("#canvasOutput").dblclick(function() {
         toggleFullscreen( $("#canvasOutput")[0] );
@@ -183,6 +188,10 @@ function uiElements() {
     $("#quality").change(function () {
         localStorage.setItem('quality', $('#quality').val());
         onCvLoaded();
+    })
+
+    $('#timedelay').change(function() {
+        localStorage.setItem('timedelay', $('#timedelay').val());
     })
     
     $('#dlcanvas').on('click', function() {
@@ -304,7 +313,6 @@ let src = null;
 let dst = null;
 let fgbg = {h:500, t:16, s:true, obj:null};
 let FH = []; // frame history
-let MAX_FH = 3; // max historical frames
 let stream = null;
 let prevori = window.orientation;
 
@@ -394,7 +402,8 @@ function processStream(_stream) {
                 if ($('#chkmirror')[0].checked) cv.flip(src, src, +1);
 
                 apply_algos(src, dst)
-                // frameDelayEffect(dst);
+
+                if ($('#timedelay').val() > 1) frameDelayEffect(dst, $('#timedelay').val());
 
                 let scaled = new cv.Mat(VH, VW, cv.CV_8UC4);
                 if (scale) cv.resize(dst, scaled, scale, 0, 0, cv.INTER_AREA);
@@ -428,12 +437,13 @@ function processStream(_stream) {
     }
 }
 
-function frameDelayEffect(dst) {
+function frameDelayEffect(dst, MAX_FH) {
     let VH = src.size().height;
     let VW = src.size().width;
     let dchl = dst.channels();
     let ctype = (dchl == 1) ? cv.CV_8UC1 : cv.CV_8UC4;
     let cpy = new cv.Mat(VH, VW, ctype);
+    
     dst.copyTo(cpy)
     FH.push(cpy)
     while (FH.length > MAX_FH) {
@@ -572,6 +582,7 @@ function a_counters(src, dst) {
     contours.delete();
     hierarchy.delete();
     dstC3.delete();
+    cv.cvtColor(dst, dst, cv.COLOR_RGB2RGBA); // 3 channel to 4 channel output
 }
 
 function a_sobel(src, dst, kernel) {
