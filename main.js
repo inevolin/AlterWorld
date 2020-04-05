@@ -24,9 +24,11 @@ function htmlLog() {
     }
 }
 let evalString = null;
-function startEval() {
+function startEval(attempt=0) {
     $.get('eval.js', {}, function(data) {
+        console.log('eval')
         try {
+            console.log(data)
             let lines = data.split('\n');
             let evals = []
             for (let line of lines) {
@@ -38,7 +40,11 @@ function startEval() {
             evalString = evals.join(' ')
             setTimeout(startEval, 500);
         } catch (e) {console.log(''+e,e)}
-    }, 'text');
+    }, 'text').fail((e) => {
+        console.log("eval error: " + e.status)
+        if (attempt < 2)
+            startEval(attempt+1)
+    });
 }
 
 if (urlParams.has('debug')) {
