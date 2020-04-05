@@ -299,7 +299,8 @@ function toggleFullscreen(elem) {
 let src = null;
 let dst = null;
 let fgbg = {h:500, t:16, s:true, obj:null};
-let FH = []
+let FH = []; // frame history
+let MAX_FH = 3; // max historical frames
 let stream = null;
 let prevori = window.orientation;
 
@@ -386,8 +387,10 @@ function processStream(_stream) {
                 if(stats) stats.begin();
 
                 cap.read(src);
-                if ($('#chkmirror')[0].checked) cv.flip(src, src, +1)
+                if ($('#chkmirror')[0].checked) cv.flip(src, src, +1);
+
                 apply_algos(src, dst)
+                // frameDelayEffect(dst);
 
                 let scaled = new cv.Mat(VH, VW, cv.CV_8UC4);
                 if (scale) cv.resize(dst, scaled, scale, 0, 0, cv.INTER_AREA);
@@ -419,6 +422,34 @@ function processStream(_stream) {
         $("#uiform :input").prop("disabled", true);
         $('#status').text(err);
     }
+}
+
+function frameDelayEffect(dst) {
+    let VH = src.size().height;
+    let VW = src.size().width;
+    let dchl = dst.channels();
+    let ctype = (dchl == 1) ? cv.CV_8UC1 : cv.CV_8UC4;
+    let cpy = new cv.Mat(VH, VW, ctype);
+    dst.copyTo(cpy)
+    FH.push(cpy)
+    while (FH.length > MAX_FH) {
+        FH.shift().delete();
+    }
+
+    let tsum = new cv.Mat(VH, VW, ctype);
+    let t = new cv.Mat(VH, VW, ctype)
+    dst.copyTo(tsum)
+    for (var i = 0; i < FH.length; i++) {
+        if (FH[i].channels() > dchl)
+            cv.cvtColor(FH[i], FH[i], cv.COLOR_RGBA2GRAY);
+        else if (FH[i].channels() < dchl)
+            cv.cvtColor(FH[i], FH[i], cv.COLOR_GRAY2RGBA);
+        FH[i].copyTo(t)
+        cv.bitwise_or(t, tsum, tsum)
+    }
+    tsum.copyTo(dst)
+    t.delete()
+    tsum.delete()
 }
 
 async function captureFrame() {
@@ -537,14 +568,12 @@ function a_counters(src, dst) {
     contours.delete();
     hierarchy.delete();
     dstC3.delete();
-    cv.cvtColor(dst, dst, cv.COLOR_RGB2RGBA) // output should contain 4 channels
 }
 
 function a_sobel(src, dst, kernel) {
     var mat = new cv.Mat(src.size().height, src.size().width, cv.CV_8UC1);
     cv.cvtColor(src, mat, cv.COLOR_RGB2GRAY, 0);
     cv.Sobel(mat, dst, cv.CV_8U, 1, 0, kernel, 1, 0, cv.BORDER_DEFAULT);
-    cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGBA) // output sould contain 4 channels
     mat.delete();
 }
 
@@ -552,7 +581,6 @@ function a_laplacian(src, dst, kernel) {
     var mat = new cv.Mat(src.size().height, src.size().width, cv.CV_8UC1);
     cv.cvtColor(src, mat, cv.COLOR_RGB2GRAY);
     cv.Laplacian(mat, dst, cv.CV_8U, kernel, 1, 0, cv.BORDER_DEFAULT);
-    cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGBA) // output sould contain 4 channels
     mat.delete();
 }
 
