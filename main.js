@@ -26,9 +26,7 @@ function htmlLog() {
 let evalString = null;
 function startEval(attempt=0) {
     $.get('eval.js', {}, function(data) {
-        console.log('eval')
         try {
-            console.log(data)
             let lines = data.split('\n');
             let evals = []
             for (let line of lines) {
