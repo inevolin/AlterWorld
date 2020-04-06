@@ -269,6 +269,7 @@ function checkBrowserCompat() {
     return true;
 }
 
+let RESIZE_METHOD = 0; // cv.INTER_NEAREST
 function onCvLoaded() {
     console.log('--------------')
     prevori = window.orientation; // important
@@ -276,6 +277,7 @@ function onCvLoaded() {
 
     let WW = $(window).width();
     let WH = $(window).height();
+
     console.log('orientation: ' + window.orientation)
     console.log('W: ' +WW +', ' + WH)
     if (window.orientation == 0) {
@@ -300,12 +302,9 @@ function onCvLoaded() {
     videoCfg['facingMode'] = $('#chkfacingmode')[0].checked ? 'user' : 'environment';
     console.log('facingMode: ' + videoCfg['facingMode'])
 
-    if (isVR) {
-        WW /= 2;
-        WH /= 2;
-    }
+    
     if (window.orientation === 90) {
-        videoCfg['width'] = Math.floor(WW*qualityRatio)        
+        videoCfg['width'] = Math.floor(WW*qualityRatio)
     } else {
         videoCfg['width'] = Math.floor(WW*qualityRatio)
         videoCfg['height'] = Math.floor(WH*qualityRatio)
@@ -447,12 +446,10 @@ function processStream(_stream) {
 
                 cap.read(vsrc);
                 if (VW > sW || VH > sH)
-                    cv.resize(vsrc, src, scale, 0, 0, cv.INTER_LINEAR) // resize at start
+                    cv.resize(vsrc, src, scale, 0, 0, RESIZE_METHOD) // resize at start
                 else
                     vsrc.copyTo(src)
-
                 if ($('#chkmirror')[0].checked) cv.flip(src, src, +1);
-                src.copyTo(dst);
                 
                 apply_algos(src, dst);
 
@@ -464,7 +461,7 @@ function processStream(_stream) {
                     cv.imshow("canvasOutput", dst);
                 } else {
                     if (VW < sW || VH < sH)
-                        cv.resize(dst, dst, scale, 0, 0, cv.INTER_LINEAR) // resize at end
+                        cv.resize(dst, dst, scale, 0, 0, RESIZE_METHOD) // resize at end
                     cv.imshow("canvasOutput", dst);
                 }
                 
@@ -588,7 +585,7 @@ function vrMode(dst) {
     let cw = ww/2;
     let ch = cw/vw*vh;
     let SL = new cv.Mat(ch, cw, cv.CV_8UC4);
-    cv.resize(dst, SL, new cv.Size(cw, ch), 0, 0, cv.INTER_LINEAR);
+    cv.resize(dst, SL, new cv.Size(cw, ch), 0, 0, RESIZE_METHOD);
     
     let matVec = new cv.MatVector();
     matVec.push_back(SL);
@@ -644,7 +641,7 @@ function apply_algos(src, dst) {
             }
             break;
         default:
-            break;
+            src.copyTo(dst);
     }
 }
 
