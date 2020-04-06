@@ -303,7 +303,7 @@ function onCvLoaded() {
     console.log('facingMode: ' + videoCfg['facingMode'])
 
     
-    if (window.orientation === 90) {
+    if (Math.abs(window.orientation) === 90) {
         videoCfg['width'] = Math.floor(WW*qualityRatio)
     } else {
         videoCfg['width'] = Math.floor(WW*qualityRatio)
@@ -379,7 +379,7 @@ function processStream(_stream) {
             VW = settings.height;
             VH = settings.width;
         }
-        if (window.orientation === 90 && VH > VW) {
+        else if (Math.abs(window.orientation) === 90 && VH > VW) {
             console.log('res swap')
             VW = settings.height;
             VH = settings.width;
