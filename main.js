@@ -572,17 +572,13 @@ async function captureFrame() {
 }
 
 function vrMode(dst) {
-    // cv.cvtColor(dst, dst, cv.COLOR_RGBA2GRAY);
-
     let vw = dst.size().width;
     let vh = dst.size().height;
     
-    
-    let ww = $(window).width();
-    let wh = $(window).height();
-    
+    let WW = $(window).width();
+    let WH = $(window).height();
 
-    let cw = ww/2;
+    let cw = WW/2;
     let ch = cw/vw*vh;
     let SL = new cv.Mat(ch, cw, cv.CV_8UC4);
     cv.resize(dst, SL, new cv.Size(cw, ch), 0, 0, RESIZE_METHOD);
