@@ -304,7 +304,7 @@ function onCvLoaded() {
         WW /= 2;
         WH /= 2;
     }
-    if (window.orientation === 90 || window.orientation === undefined) {
+    if (window.orientation === 90) {
         videoCfg['width'] = Math.floor(WW*qualityRatio)        
     } else {
         videoCfg['width'] = Math.floor(WW*qualityRatio)
@@ -447,7 +447,7 @@ function processStream(_stream) {
 
                 cap.read(vsrc);
                 if (VW > sW || VH > sH)
-                    cv.resize(vsrc, src, scale, 0, 0, cv.INTER_AREA) // resize at start
+                    cv.resize(vsrc, src, scale, 0, 0, cv.INTER_LINEAR) // resize at start
                 else
                     vsrc.copyTo(src)
 
@@ -464,7 +464,7 @@ function processStream(_stream) {
                     cv.imshow("canvasOutput", dst);
                 } else {
                     if (VW < sW || VH < sH)
-                        cv.resize(dst, dst, scale, 0, 0, cv.INTER_AREA) // resize at end
+                        cv.resize(dst, dst, scale, 0, 0, cv.INTER_LINEAR) // resize at end
                     cv.imshow("canvasOutput", dst);
                 }
                 
@@ -588,7 +588,7 @@ function vrMode(dst) {
     let cw = ww/2;
     let ch = cw/vw*vh;
     let SL = new cv.Mat(ch, cw, cv.CV_8UC4);
-    cv.resize(dst, SL, new cv.Size(cw, ch), 0, 0, cv.INTER_AREA);
+    cv.resize(dst, SL, new cv.Size(cw, ch), 0, 0, cv.INTER_LINEAR);
     
     let matVec = new cv.MatVector();
     matVec.push_back(SL);
