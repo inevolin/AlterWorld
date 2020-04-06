@@ -276,6 +276,8 @@ function onCvLoaded() {
 
     let WW = $(window).width();
     let WH = $(window).height();
+    console.log('orientation: ' + window.orientation)
+    console.log('W: ' +WW +', ' + WH)
     if (window.orientation == 0) {
         let tmp = WH;
         WH = WW;
@@ -298,8 +300,11 @@ function onCvLoaded() {
     videoCfg['facingMode'] = $('#chkfacingmode')[0].checked ? 'user' : 'environment';
     console.log('facingMode: ' + videoCfg['facingMode'])
 
-    if (isVR) WW /= 2;
-    if (window.orientation == 90) {
+    if (isVR) {
+        WW /= 2;
+        WH /= 2;
+    }
+    if (window.orientation === 90 || window.orientation === undefined) {
         videoCfg['width'] = Math.floor(WW*qualityRatio)        
     } else {
         videoCfg['width'] = Math.floor(WW*qualityRatio)
@@ -314,6 +319,7 @@ function onCvLoaded() {
     })
     .then(processStream)
     .catch(function(err) {
+        $("#uiform :input").prop("disabled", false);
         $('#status').text(err);
         console.log(err);
     });
@@ -364,9 +370,6 @@ function processStream(_stream) {
 
         let WW = $(window).width();
         let WH = $(window).height();
-
-        console.log('orientation: ' + window.orientation)
-        console.log('W: ' +WW +', ' + WH)
         
         const settings = stream.getTracks()[0].getSettings();
         let VW = settings.width;
@@ -412,10 +415,10 @@ function processStream(_stream) {
         let dst = new cv.Mat(sH, sW, cv.CV_8UC4);
         let cap = new cv.VideoCapture(video);
 
-        if (vsrc.cols < sW || vsrc.rows < sH)
-            console.log('resizing at end')
-        else if (vsrc.cols < sW || vsrc.rows < sH)
+        if (VW > sW || VH > sH)
             console.log('resizing at start')
+        else if (VW < sW || VH < sH)
+            console.log('resizing at end')
         else
             console.log('no resize needed')
 
@@ -443,7 +446,7 @@ function processStream(_stream) {
                 if(stats) stats.begin();
 
                 cap.read(vsrc);
-                if (vsrc.cols > sW || vsrc.rows > sH)
+                if (VW > sW || VH > sH)
                     cv.resize(vsrc, src, scale, 0, 0, cv.INTER_AREA) // resize at start
                 else
                     vsrc.copyTo(src)
@@ -460,7 +463,7 @@ function processStream(_stream) {
                     vrMode(dst);
                     cv.imshow("canvasOutput", dst);
                 } else {
-                    if (vsrc.cols < sW || vsrc.rows < sH)
+                    if (VW < sW || VH < sH)
                         cv.resize(dst, dst, scale, 0, 0, cv.INTER_AREA) // resize at end
                     cv.imshow("canvasOutput", dst);
                 }
