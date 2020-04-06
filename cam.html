@@ -26,10 +26,11 @@
     <body>
         <img id="imgok" src="ok.png" style="display:none;" />
 
-        <span id="status">loading...</span>
-        <canvas id="canvasOutput"></canvas>
-        <video id="videoInput" style="display: none;"></video>
-
+        <div style="text-align: center">
+            <span id="status">loading...</span>
+            <canvas id="canvasOutput"></canvas>
+            <video id="videoInput" style="display: none;"></video>
+        </div>
         <br>
 
         <form style="max-width:600px" id="uiform">
@@ -58,6 +59,7 @@
             </select>
             <label> <input type="checkbox" id="chkfacingmode" checked='checked'>Frontal </label>
             <label> <input type="checkbox" id="chkmirror">Mirror </label>
+            <label> <input type="checkbox" id="vrmode">VR mode </label>
             <br>
             <br>
             <label> Time Delay: <input id="timedelay" type="number" value="1" style="max-width: 60px; text-align: center;"> </label>
@@ -71,7 +73,11 @@
         <div id="log"></div>
         <br>
 
-        <script src="main.js?v=1" type="text/javascript"></script>
+        <script src="main.js?v=2" type="text/javascript"></script>
+        <!-- <script>
+            $.holdReady(true);
+            $.getScript("main.js?v="+ (new Date()).getTime(), function() { $.holdReady(false); });
+        </script> -->
         
     </body>
 

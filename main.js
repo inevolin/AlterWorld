@@ -5,7 +5,6 @@ function debuggingStuff() {
     stats.showPanel( 0 ); // 0: fps, 1: ms, 2: mb, 3+: custom
     document.body.appendChild( stats.dom );
     htmlLog()
-    startEval()
     $('#algoselect')[0].innerHTML += '<option value="test">test</option>';
 }
 function htmlLog() {
@@ -47,6 +46,10 @@ function startEval(attempt=0) {
 
 if (urlParams.has('debug')) {
     debuggingStuff();
+}
+if (urlParams.has('eval')) {
+    console.log('startEval')
+    startEval();
 }
 
 const is_mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -165,6 +168,10 @@ function uiElements() {
         $("#chkfacingmode").prop('checked', localStorage.getItem('chkfacingmode')=='true')
     if (getL('chkmirror'))
         $("#chkmirror").prop('checked', localStorage.getItem('chkmirror')=='true')
+    if (getL('vrmode')) {
+        $("#vrmode").prop('checked', localStorage.getItem('vrmode')=='true')
+        isVR = $('#vrmode')[0].checked;
+    }
     if (getL('timedelay'))
         $("#timedelay").val(localStorage.getItem('timedelay'))
 
@@ -183,6 +190,11 @@ function uiElements() {
 
     $('#chkmirror').on('click', function() {
         localStorage.setItem('chkmirror', $('#chkmirror')[0].checked);
+    })
+    $('#vrmode').on('click', function() {
+        localStorage.setItem('vrmode', $('#vrmode')[0].checked);
+        isVR = $('#vrmode')[0].checked;
+        onCvLoaded();
     })
 
     $("#quality").change(function () {
@@ -285,8 +297,16 @@ function onCvLoaded() {
     const videoCfg = {}
     videoCfg['facingMode'] = $('#chkfacingmode')[0].checked ? 'user' : 'environment';
     console.log('facingMode: ' + videoCfg['facingMode'])
-    videoCfg['height'] = Math.floor(WH*qualityRatio)
-    videoCfg['width'] = Math.floor(WW*qualityRatio)
+
+    if (isVR) WW /= 2;
+    if (window.orientation == 90) {
+        videoCfg['width'] = Math.floor(WW*qualityRatio)        
+    } else {
+        videoCfg['width'] = Math.floor(WW*qualityRatio)
+        videoCfg['height'] = Math.floor(WH*qualityRatio)
+    }
+    
+    console.log('requesting: '+  videoCfg['width'] + ', ' + videoCfg['height'])
     console.log('qualityRatio: '+  qualityRatio)
     navigator.mediaDevices.getUserMedia({
         video: videoCfg,
@@ -313,6 +333,7 @@ function toggleFullscreen(elem) {
     }
 }
 
+let isVR = 0;
 let stream = null;
 let prevori = window.orientation;
 
@@ -378,9 +399,6 @@ function processStream(_stream) {
         // let fgbg = {h:500, t:16, s:true, obj:null};
         let FH = []; // frame history
 
-        src = new cv.Mat(VH, VW, cv.CV_8UC4);
-        dst = new cv.Mat(VH, VW, cv.CV_8UC4);
-        let cap = new cv.VideoCapture(video);
 
         // always scale to fit window width
         let sW = WW;
@@ -391,6 +409,9 @@ function processStream(_stream) {
 
         let t0 = performance.now();
 
+        src = new cv.Mat(VH, VW, cv.CV_8UC4);
+        dst = new cv.Mat(VH, VW, cv.CV_8UC4);
+        let cap = new cv.VideoCapture(video);
 
         function processVideo() {
             try {
@@ -412,18 +433,32 @@ function processStream(_stream) {
                 if(stats) stats.begin();
 
                 cap.read(src);
-                if ($('#chkmirror')[0].checked) cv.flip(src, src, +1);
+                
+                cv.resize(src, src, scale, 0, 0, cv.INTER_AREA); // 
 
-                apply_algos(src, dst)
+                if ($('#chkmirror')[0].checked) cv.flip(src, src, +1);
+                
+                
+                src.copyTo(dst)
+
+                // apply_algos(src, dst)
 
                 if ($('#timedelay').val() > 1 && $('#timedelay').val() <= 20)
                     frameDelayEffect(FH, dst, $('#timedelay').val());
 
-                let scaled = new cv.Mat(VH, VW, cv.CV_8UC4);
-                if (scale) cv.resize(dst, scaled, scale, 0, 0, cv.INTER_AREA);
-                else dst.copyTo(scaled);
-                cv.imshow("canvasOutput", scaled);
-                scaled.delete()
+                if (isVR) {
+                    vrMode(dst);
+                    cv.imshow("canvasOutput", dst);
+                }
+                /*else if (scale) {
+                    let scaled = new cv.Mat(VH, VW, cv.CV_8UC4);
+                    cv.resize(dst, scaled, scale, 0, 0, cv.INTER_AREA);
+                    cv.imshow("canvasOutput", scaled);
+                    scaled.delete()
+                } else*/ {
+                    cv.imshow("canvasOutput", dst);
+                }
+                
                 captureFrame()
 
                 let t1 = performance.now();
@@ -529,6 +564,30 @@ async function captureFrame() {
     }
 }
 
+function vrMode(dst) {
+    // cv.cvtColor(dst, dst, cv.COLOR_RGBA2GRAY);
+
+    let vw = dst.size().width;
+    let vh = dst.size().height;
+    
+    
+    let ww = $(window).width();
+    let wh = $(window).height();
+    
+
+    let cw = ww/2;
+    let ch = cw/vw*vh;
+    let SL = new cv.Mat(ch, cw, cv.CV_8UC4);
+    cv.resize(dst, SL, new cv.Size(cw, ch), 0, 0, cv.INTER_AREA);
+    
+    let matVec = new cv.MatVector();
+    matVec.push_back(SL);
+    matVec.push_back(SL);
+    cv.hconcat(matVec, dst)
+    matVec.delete()
+    SL.delete()
+}
+
 function apply_algos(src, dst) {
     const qalgo = $("#algoselect").val();
     switch(qalgo) {
@@ -569,8 +628,8 @@ function apply_algos(src, dst) {
             break;
         case 'test':
             try {
-                if (evalString)
-                    eval(evalString)
+                if (evalString) eval(evalString);
+                else src.copyTo(dst);
             } catch (e) {
                 console.log(''+e)
             }
