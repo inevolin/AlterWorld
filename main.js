@@ -313,10 +313,6 @@ function toggleFullscreen(elem) {
     }
 }
 
-let src = null;
-let dst = null;
-let fgbg = {h:500, t:16, s:true, obj:null};
-let FH = []; // frame history
 let stream = null;
 let prevori = window.orientation;
 
@@ -377,21 +373,34 @@ function processStream(_stream) {
         video.srcObject = stream;
         video.play();
 
+        let src = null;
+        let dst = null;
+        // let fgbg = {h:500, t:16, s:true, obj:null};
+        let FH = []; // frame history
+
         src = new cv.Mat(VH, VW, cv.CV_8UC4);
         dst = new cv.Mat(VH, VW, cv.CV_8UC4);
         let cap = new cv.VideoCapture(video);
 
         // always scale to fit window width
+        let sW = WW;
+        let sH = Math.floor(WW/VW*VH)
         let scale = null;
-        scale = new cv.Size(WW, Math.floor(WW/VW*VH))
-        console.log('scaling: ' + WW + ', ' + Math.floor(WW/VW*VH))
+        scale = new cv.Size(sW, sH)
+        console.log('scaling: ' + sW + ', ' + sH)
 
         let t0 = performance.now();
 
+
         function processVideo() {
             try {
-                if (stream.id !== _stream.id)
+                if (stream.id !== _stream.id) {
+                    if (src) src.delete();
+                    if (dst) dst.delete();
+                    while (FH.length)
+                        FH.pop().delete();
                     return console.log('processVideo aborting')
+                }
                 if (prevori != window.orientation && !gifrec) {
                     console.log('reloading')
                     $(window).one('resize', function () {
@@ -408,10 +417,11 @@ function processStream(_stream) {
                 apply_algos(src, dst)
 
                 if ($('#timedelay').val() > 1 && $('#timedelay').val() <= 20)
-                    frameDelayEffect(dst, $('#timedelay').val());
+                    frameDelayEffect(FH, dst, $('#timedelay').val());
 
                 let scaled = new cv.Mat(VH, VW, cv.CV_8UC4);
                 if (scale) cv.resize(dst, scaled, scale, 0, 0, cv.INTER_AREA);
+                else dst.copyTo(scaled);
                 cv.imshow("canvasOutput", scaled);
                 scaled.delete()
                 captureFrame()
@@ -442,9 +452,9 @@ function processStream(_stream) {
     }
 }
 
-function frameDelayEffect(dst, MAX_FH) {
-    let VH = src.size().height;
-    let VW = src.size().width;
+function frameDelayEffect(FH, dst, MAX_FH) {
+    let VH = dst.size().height;
+    let VW = dst.size().width;
     let dchl = dst.channels();
     let ctype = (dchl == 1) ? cv.CV_8UC1 : cv.CV_8UC4;
     let cpy = new cv.Mat(VH, VW, ctype);
