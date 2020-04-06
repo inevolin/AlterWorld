@@ -394,8 +394,6 @@ function processStream(_stream) {
         video.srcObject = stream;
         video.play();
 
-        let src = null;
-        let dst = null;
         // let fgbg = {h:500, t:16, s:true, obj:null};
         let FH = []; // frame history
 
@@ -405,25 +403,37 @@ function processStream(_stream) {
         let sH = Math.floor(WW/VW*VH)
         let scale = null;
         scale = new cv.Size(sW, sH)
-        console.log('scaling: ' + sW + ', ' + sH)
+        console.log('scale: ' + sW + ', ' + sH)
 
         let t0 = performance.now();
 
-        src = new cv.Mat(VH, VW, cv.CV_8UC4);
-        dst = new cv.Mat(VH, VW, cv.CV_8UC4);
+        let vsrc = new cv.Mat(VH, VW, cv.CV_8UC4);
+        let src = new cv.Mat(sH, sW, cv.CV_8UC4);
+        let dst = new cv.Mat(sH, sW, cv.CV_8UC4);
         let cap = new cv.VideoCapture(video);
+
+        if (vsrc.cols < sW || vsrc.rows < sH)
+            console.log('resizing at end')
+        else if (vsrc.cols < sW || vsrc.rows < sH)
+            console.log('resizing at start')
+        else
+            console.log('no resize needed')
+
+        function cleanup() {
+            if (vsrc) vsrc.delete();
+            if (src) src.delete();
+            if (dst) dst.delete();
+            while (FH.length) FH.pop().delete();
+        }
 
         function processVideo() {
             try {
                 if (stream.id !== _stream.id) {
-                    if (src) src.delete();
-                    if (dst) dst.delete();
-                    while (FH.length)
-                        FH.pop().delete();
+                    cleanup();
                     return console.log('processVideo aborting')
                 }
                 if (prevori != window.orientation && !gifrec) {
-                    console.log('reloading')
+                    cleanup();
                     $(window).one('resize', function () {
                         onCvLoaded();
                     });
@@ -432,16 +442,16 @@ function processStream(_stream) {
 
                 if(stats) stats.begin();
 
-                cap.read(src);
-                
-                cv.resize(src, src, scale, 0, 0, cv.INTER_AREA); // 
+                cap.read(vsrc);
+                if (vsrc.cols > sW || vsrc.rows > sH)
+                    cv.resize(vsrc, src, scale, 0, 0, cv.INTER_AREA) // resize at start
+                else
+                    vsrc.copyTo(src)
 
                 if ($('#chkmirror')[0].checked) cv.flip(src, src, +1);
+                src.copyTo(dst);
                 
-                
-                src.copyTo(dst)
-
-                // apply_algos(src, dst)
+                apply_algos(src, dst);
 
                 if ($('#timedelay').val() > 1 && $('#timedelay').val() <= 20)
                     frameDelayEffect(FH, dst, $('#timedelay').val());
@@ -449,13 +459,9 @@ function processStream(_stream) {
                 if (isVR) {
                     vrMode(dst);
                     cv.imshow("canvasOutput", dst);
-                }
-                /*else if (scale) {
-                    let scaled = new cv.Mat(VH, VW, cv.CV_8UC4);
-                    cv.resize(dst, scaled, scale, 0, 0, cv.INTER_AREA);
-                    cv.imshow("canvasOutput", scaled);
-                    scaled.delete()
-                } else*/ {
+                } else {
+                    if (vsrc.cols < sW || vsrc.rows < sH)
+                        cv.resize(dst, dst, scale, 0, 0, cv.INTER_AREA) // resize at end
                     cv.imshow("canvasOutput", dst);
                 }
                 
@@ -471,6 +477,7 @@ function processStream(_stream) {
                 }
 
             } catch (err) {
+                cleanup();
                 $('#status').text('Error: ' + err);
                 console.log(err);
             }
@@ -629,13 +636,12 @@ function apply_algos(src, dst) {
         case 'test':
             try {
                 if (evalString) eval(evalString);
-                else src.copyTo(dst);
             } catch (e) {
                 console.log(''+e)
             }
             break;
         default:
-            src.copyTo(dst)
+            break;
     }
 }
 
