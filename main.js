@@ -182,6 +182,9 @@ function uiElements() {
     if (getL('glitch'))
         $("#glitch").val(localStorage.getItem('glitch'))
 
+    if (getL('glitchrand'))
+        $("#glitchrand").prop('checked', localStorage.getItem('glitchrand')=='true')
+    
     $("#canvasOutput").dblclick(function() {
         toggleFullscreen( $("#canvasOutput")[0] );
     });
@@ -195,6 +198,9 @@ function uiElements() {
         onCvLoaded();
     })
 
+    $('#glitchrand').on('click', function() {
+        localStorage.setItem('glitchrand', $('#glitchrand')[0].checked);
+    })
     $('#chkmirror').on('click', function() {
         localStorage.setItem('chkmirror', $('#chkmirror')[0].checked);
     })
@@ -570,11 +576,21 @@ function frameDelayEffect(FDE, dst, MAX_FDE) {
     t.delete()
     tsum.delete()
 }
+
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
 function glitchEffect(GCH, dst, MAX_F) {
     while (GCH.length > MAX_F) GCH.shift();
     if (GCH.length < MAX_F) {
         GCH.push(dst.clone());
     } else {
+        if ($('#glitchrand')[0].checked)
+            shuffleArray(GCH);
         let h = GCH.shift();
         h.copyTo(dst)
         h.delete();
