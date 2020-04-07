@@ -179,6 +179,9 @@ function uiElements() {
     if (getL('timedelay'))
         $("#timedelay").val(localStorage.getItem('timedelay'))
 
+    if (getL('glitch'))
+        $("#glitch").val(localStorage.getItem('glitch'))
+
     $("#canvasOutput").dblclick(function() {
         toggleFullscreen( $("#canvasOutput")[0] );
     });
@@ -216,6 +219,13 @@ function uiElements() {
         if ($("#timedelay").val() <= 0)
             $("#timedelay").val(1)
         localStorage.setItem('timedelay', $('#timedelay').val());
+    })
+    $('#glitch').change(function() {
+        if ($("#glitch").val() > 100)
+            $("#glitch").val(100)
+        if ($("#glitch").val() <= 0)
+            $("#glitch").val(1)
+        localStorage.setItem('glitch', $('#glitch').val());
     })
     
     $('#dlcanvas').on('click', function() {
@@ -375,6 +385,7 @@ function abortStream() {
     });
 }
 
+let fgbg = {h:500, t:16, s:true, obj:null};
 function fgbgInit(h, t, s) {
     if (fgbg.h !== h || fgbg.t !== t || fgbg.s !== s) {
         if (fgbg.obj) fgbg.obj.delete();
@@ -422,8 +433,7 @@ function processStream(_stream) {
         video.srcObject = stream;
         video.play();
 
-        // let fgbg = {h:500, t:16, s:true, obj:null};
-        let FH = []; // frame history
+        
 
 
         // always scale to fit window width
@@ -439,6 +449,8 @@ function processStream(_stream) {
         let src = new cv.Mat(sH, sW, cv.CV_8UC4);
         let dst = new cv.Mat(sH, sW, cv.CV_8UC4);
         let cap = new cv.VideoCapture(video);
+        let FDE = [];
+        let GCH = [];
 
         if (VW > sW || VH > sH)
             console.log('resizing at start')
@@ -448,10 +460,12 @@ function processStream(_stream) {
             console.log('no resize needed')
 
         function cleanup() {
+            if (fgbg.obj) fgbg.obj.delete();
             if (vsrc) vsrc.delete();
             if (src) src.delete();
             if (dst) dst.delete();
-            while (FH.length) FH.pop().delete();
+            while (FDE.length) FDE.pop().delete();
+            while (GCH.length) GCH.pop().delete();
         }
 
         function processVideo() {
@@ -480,7 +494,10 @@ function processStream(_stream) {
                 apply_algos(src, dst);
 
                 if ($('#timedelay').val() > 1 && $('#timedelay').val() <= 20)
-                    frameDelayEffect(FH, dst, $('#timedelay').val());
+                    frameDelayEffect(FDE, dst, $('#timedelay').val());
+
+                if ($('#glitch').val() > 1 && $('#glitch').val() <= 100)
+                    glitchEffect(GCH, dst, $('#glitch').val());
                 
                 if ($('#chkinvert')[0].checked) {
                     if (dst.channels() > 1)
@@ -525,7 +542,7 @@ function processStream(_stream) {
     }
 }
 
-function frameDelayEffect(FH, dst, MAX_FH) {
+function frameDelayEffect(FDE, dst, MAX_FDE) {
     let VH = dst.size().height;
     let VW = dst.size().width;
     let dchl = dst.channels();
@@ -533,25 +550,35 @@ function frameDelayEffect(FH, dst, MAX_FH) {
     let cpy = new cv.Mat(VH, VW, ctype);
     
     dst.copyTo(cpy)
-    FH.push(cpy)
-    while (FH.length > MAX_FH) {
-        FH.shift().delete();
+    FDE.push(cpy)
+    while (FDE.length > MAX_FDE) {
+        FDE.shift().delete();
     }
 
     let tsum = new cv.Mat(VH, VW, ctype);
     let t = new cv.Mat(VH, VW, ctype)
     dst.copyTo(tsum)
-    for (var i = 0; i < FH.length; i++) {
-        if (FH[i].channels() > dchl)
-            cv.cvtColor(FH[i], FH[i], cv.COLOR_RGBA2GRAY);
-        else if (FH[i].channels() < dchl)
-            cv.cvtColor(FH[i], FH[i], cv.COLOR_GRAY2RGBA);
-        FH[i].copyTo(t)
+    for (var i = 0; i < FDE.length; i++) {
+        if (FDE[i].channels() > dchl)
+            cv.cvtColor(FDE[i], FDE[i], cv.COLOR_RGBA2GRAY);
+        else if (FDE[i].channels() < dchl)
+            cv.cvtColor(FDE[i], FDE[i], cv.COLOR_GRAY2RGBA);
+        FDE[i].copyTo(t)
         cv.bitwise_or(t, tsum, tsum)
     }
     tsum.copyTo(dst)
     t.delete()
     tsum.delete()
+}
+function glitchEffect(GCH, dst, MAX_F) {
+    while (GCH.length > MAX_F) GCH.shift();
+    if (GCH.length < MAX_F) {
+        GCH.push(dst.clone());
+    } else {
+        let h = GCH.shift();
+        h.copyTo(dst)
+        h.delete();
+    }
 }
 
 async function captureFrame() {
