@@ -216,6 +216,15 @@ function uiElements() {
         addDlSpace(data);
     })
 
+    if (is_mobile) $('#btntorch').show();
+    else $('#btntorch').hide();
+    $('#btntorch').on('click', function() {
+        const track = stream.getVideoTracks()[0];
+        track.applyConstraints({
+            advanced: [{torch: true}]
+        });
+    })
+
     $('#recordcanvas').on('click', function() {
         if (!gifrec) startRec();
         else stopRec();
@@ -629,6 +638,14 @@ function apply_algos(src, dst) {
             break;
         case 'golem':
             a_golem(src, dst);
+            break;
+        case 'splintercell':
+            cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+            cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGB);
+            let f = dst.clone()
+            f.setTo(new cv.Scalar(0,210,0,255))
+            cv.bitwise_and(dst, f, dst)
+            f.delete()
             break;
         case 'test':
             try {
