@@ -704,12 +704,10 @@ function apply_algos(src, dst) {
             a_golem(src, dst);
             break;
         case 'splintercell':
-            cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
-            cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGB);
-            let f = dst.clone()
-            f.setTo(new cv.Scalar(0,210,0,255))
-            cv.bitwise_and(dst, f, dst)
-            f.delete()
+            a_splintercell(src, dst, false);
+            break;
+        case 'splintercell2':
+            a_splintercell(src, dst, true)
             break;
         case 'test':
             try {
@@ -741,6 +739,17 @@ function a_counters(src, dst) {
     hierarchy.delete();
     dstC3.delete();
     cv.cvtColor(dst, dst, cv.COLOR_RGB2RGBA); // 3 channel to 4 channel output
+}
+
+function a_splintercell(src, dst, inv) {
+    cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+    if (inv)
+        cv.bitwise_not(dst, dst);
+    cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGB);
+    let f = dst.clone()
+    f.setTo(new cv.Scalar(0,210,0,255))
+    cv.bitwise_and(dst, f, dst)
+    f.delete()
 }
 
 function a_sobel(src, dst, kernel) {
