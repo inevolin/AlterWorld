@@ -169,6 +169,9 @@ function uiElements() {
         $("#chkfacingmode").prop('checked', localStorage.getItem('chkfacingmode')=='true')
     if (getL('chkmirror'))
         $("#chkmirror").prop('checked', localStorage.getItem('chkmirror')=='true')
+    if (getL('chkinvert'))
+        $("#chkinvert").prop('checked', localStorage.getItem('chkinvert')=='true')
+    
     if (getL('vrmode')) {
         $("#vrmode").prop('checked', localStorage.getItem('vrmode')=='true')
         isVR = $('#vrmode')[0].checked;
@@ -192,6 +195,10 @@ function uiElements() {
     $('#chkmirror').on('click', function() {
         localStorage.setItem('chkmirror', $('#chkmirror')[0].checked);
     })
+    $('#chkinvert').on('click', function() {
+        localStorage.setItem('chkinvert', $('#chkinvert')[0].checked);
+    })
+
     $('#vrmode').on('click', function() {
         localStorage.setItem('vrmode', $('#vrmode')[0].checked);
         isVR = $('#vrmode')[0].checked;
@@ -474,7 +481,12 @@ function processStream(_stream) {
 
                 if ($('#timedelay').val() > 1 && $('#timedelay').val() <= 20)
                     frameDelayEffect(FH, dst, $('#timedelay').val());
-
+                
+                if ($('#chkinvert')[0].checked) {
+                    if (dst.channels() > 1)
+                        cv.cvtColor(dst, dst, cv.COLOR_RGBA2GRAY);
+                    cv.bitwise_not(dst, dst);
+                }
                 if (isVR) {
                     vrMode(dst);
                     cv.imshow("canvasOutput", dst);
