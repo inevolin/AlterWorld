@@ -216,13 +216,22 @@ function uiElements() {
         addDlSpace(data);
     })
 
-    if (is_mobile) $('#btntorch').show();
-    else $('#btntorch').hide();
+    if (is_mobile)
+        $('#btntorch').show();
     $('#btntorch').on('click', function() {
+        const btn = $("#btntorch");
         const track = stream.getVideoTracks()[0];
-        track.applyConstraints({
-            advanced: [{torch: true}]
-        });
+        if (btn.prop("data-torch")) {
+            btn.prop("data-torch", false)
+            track.applyConstraints({
+                advanced: [{torch: false}]
+            });
+        } else {
+            btn.prop("data-torch", true)
+            track.applyConstraints({
+                advanced: [{torch: true}]
+            });
+        }
     })
 
     $('#recordcanvas').on('click', function() {
