@@ -24,7 +24,7 @@ function htmlLog() {
 }
 let evalString = null;
 function startEval(attempt=0) {
-    $.get('eval.js', {}, function(data) {
+    $.get('eval.js?v='+((new Date()).getTime()), {}, function(data) {
         try {
             let lines = data.split('\n');
             let evals = []
@@ -709,6 +709,9 @@ function apply_algos(src, dst) {
         case 'splintercell2':
             a_splintercell(src, dst, true)
             break;
+        case 'distancetransform':
+            a_distTransform(src, dst);
+            break;
         case 'test':
             try {
                 if (evalString) eval(evalString);
@@ -751,7 +754,22 @@ function a_splintercell(src, dst, inv) {
     cv.bitwise_and(dst, f, dst)
     f.delete()
 }
-
+function a_distTransform(src, dst) {
+    let dmask = dst.clone()
+    cv.cvtColor(src, dmask, cv.COLOR_RGBA2GRAY, 0);
+    cv.threshold(dmask, dmask, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU);
+    let opening = new cv.Mat();
+    let M = cv.Mat.ones(3, 3, cv.CV_8U);
+    cv.erode(dmask, dmask, M);
+    cv.dilate(dmask, opening, M);
+    cv.distanceTransform(opening, dmask, cv.DIST_L1, cv.CV_32F);
+    cv.normalize(dmask, dmask, 1, 0, cv.NORM_INF);
+    dmask.convertTo(dmask, cv.CV_8U, 255,0)
+    dmask.copyTo(dst)
+    M.delete()
+    opening.delete()
+    dmask.delete()
+}
 function a_sobel(src, dst, kernel) {
     var mat = new cv.Mat(src.size().height, src.size().width, cv.CV_8UC1);
     cv.cvtColor(src, mat, cv.COLOR_RGB2GRAY, 0);
