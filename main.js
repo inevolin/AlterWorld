@@ -54,6 +54,7 @@ if (urlParams.has('eval')) {
 
 const is_mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 console.log('is_mobile: ' + is_mobile)
+console.log('screen: ' + screen.width + ' x ' + screen.height);
 
 const FPS = 30;
 let recDelay = 1000/FPS;

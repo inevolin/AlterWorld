@@ -26,43 +26,45 @@
     <body>
         <img id="imgok" src="ok.png" style="display:none;" />
 
-        <div style="text-align: center">
+        <div style="text-align: center; width:100%;">
+            <canvas id="canvasOutput"></canvas><br>
             <span id="status">loading...</span>
-            <canvas id="canvasOutput"></canvas>
             <video id="videoInput" style="display: none;"></video>
         </div>
-        <br>
 
-        <form style="max-width:600px" id="uiform">
-            <label> <input type="button" id="dlcanvas" value="📷 screenshot"> </label>
-            <label> <input type="button" id="recordcanvas" value="🎥 start recording"> </label> <span id="lblfps" style="font-size: 11px;"></span>
-            <br>
-            <br>
-            <select id="algoselect" style="min-width:300px;">
-                <option value="default" selected>default</option>
-                <option value="grayscale">grayscale</option>
-                <option value="canny">canny</option>
-                <option value="canny-xl">cannyXL</option>
-                <option value="adagauss">40yrs of prison</option>
-                <option value="contours">disco</option>
-                <option value="contoursgray">sad disco</option>
-                <option value="innerghost">inner ghost</option>
-                <option value="outerghost">outer ghost</option>
-                <option value="golem">golem</option>
-            </select>
-            <br>
-            <br>
-            <select id="quality">
-                <option value="low" selected>low q</option>
-                <option value="medium">medium q</option>
-                <option value="high">high q</option>
-            </select>
-            <label> <input type="checkbox" id="chkfacingmode" checked='checked'>Frontal </label>
-            <label> <input type="checkbox" id="chkmirror">Mirror </label>
-            <label> <input type="checkbox" id="vrmode">VR mode </label>
-            <br>
-            <br>
-            <label> Time Delay: <input id="timedelay" type="number" value="1" style="max-width: 60px; text-align: center;"> </label>
+        <form style="width:100%;" id="uiform">
+            <span id="lblfps" style="font-size: 11px; color:red; position:  absolute; top:0;right:20px;"></span>
+            <div style="text-align: center;">
+                <label> <input type="button" id="dlcanvas" value="📷 screenshot"> </label>
+                <label> <input type="button" id="recordcanvas" value="🎥 start recording"> </label>
+                <br>
+                <br>
+                <select id="algoselect" style="min-width:300px; text-align: center;">
+                    <option value="default" selected>default</option>
+                    <option value="grayscale">grayscale</option>
+                    <option value="canny">canny</option>
+                    <option value="canny-xl">cannyXL</option>
+                    <option value="adagauss">40yrs of prison</option>
+                    <option value="contours">disco</option>
+                    <option value="contoursgray">sad disco</option>
+                    <option value="innerghost">inner ghost</option>
+                    <option value="outerghost">outer ghost</option>
+                    <option value="golem">golem</option>
+                </select>
+                <br>
+                <br>
+                <select id="quality" style=" text-align: center;">
+                    <option value="low" selected>low q</option>
+                    <option value="medium">medium q</option>
+                    <option value="high">high q</option>
+                </select>
+                <label> <input type="checkbox" id="chkfacingmode" checked='checked'>Frontal </label>
+                <label> <input type="checkbox" id="chkmirror">Mirror </label>
+                <label> <input type="checkbox" id="vrmode">VR mode </label>
+                <br>
+                <br>
+                <label> Time Delay: <input id="timedelay" type="number" value="1" style="max-width: 60px; text-align: center;"> </label>
+            </div>
         </form>
 
         <br>
