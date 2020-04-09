@@ -176,6 +176,9 @@ function uiElements() {
         $("#vrmode").prop('checked', localStorage.getItem('vrmode')=='true')
         isVR = $('#vrmode')[0].checked;
     }
+    if (getL('maestro')) {
+        $("#maestro").prop('checked', localStorage.getItem('maestro')=='true')
+    }
     if (getL('timedelay'))
         $("#timedelay").val(localStorage.getItem('timedelay'))
 
@@ -214,6 +217,9 @@ function uiElements() {
         onCvLoaded();
     })
 
+    $('#maestro').on('click', function() {
+        localStorage.setItem('maestro', $('#maestro')[0].checked);
+    })
     $("#quality").change(function () {
         localStorage.setItem('quality', $('#quality').val());
         onCvLoaded();
@@ -383,7 +389,6 @@ function toggleFullscreen(elem) {
 let isVR = 0;
 let stream = null;
 let prevori = window.orientation;
-
 function abortStream() {
     if (stream == null) return;
     stream.getTracks().forEach(function(track) {
@@ -510,6 +515,12 @@ function processStream(_stream) {
                         cv.cvtColor(dst, dst, cv.COLOR_RGBA2GRAY);
                     cv.bitwise_not(dst, dst);
                 }
+
+                // if (evalString) eval(evalString); // music synth
+                if ($('#maestro')[0].checked) {
+                    musicFrame(dst);
+                }
+
                 if (isVR) {
                     vrMode(dst);
                     cv.imshow("canvasOutput", dst);
@@ -596,6 +607,9 @@ function glitchEffect(GCH, dst, MAX_F) {
         h.delete();
     }
 }
+
+
+
 
 async function captureFrame() {
     if (!gifrec) return;
@@ -748,7 +762,7 @@ function a_splintercell(src, dst, inv) {
     cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
     if (inv)
         cv.bitwise_not(dst, dst);
-    cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGB);
+    cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGBA);
     let f = dst.clone()
     f.setTo(new cv.Scalar(0,210,0,255))
     cv.bitwise_and(dst, f, dst)
@@ -789,4 +803,211 @@ function a_golem(src, dst) {
     let kernel = cv.getStructuringElement(Number(cv.MORPH_RECT), {width: kernelSize, height: kernelSize});
     cv.morphologyEx(src, dst, cv.MORPH_DILATE, kernel, {x: -1, y: -1}, 1, cv.BORDER_CONSTANT);
     kernel.delete();
+}
+
+
+
+
+////////////// music synths
+
+
+function musicFrame(dst) {
+
+    if (muse.cnt++ == 60) {
+        musicFrameImpl(dst)
+        muse.cnt = 0;
+    }
+
+    if (urlParams.has('debug')) {
+        if (muse.mat && muse.mat.channels() == dst.channels()) {
+            cv.bitwise_or(dst, muse.mat, dst) 
+            //muse.mat.copyTo(dst)
+        }
+    }
+    // console.log((new Date()).getTime() - muse.ts)
+    if (muse.pat && (new Date()).getTime() - muse.ts >= 0) {
+        for (let part of muse.parts) {
+            part.stop();
+            part.dispose()
+        }
+        muse.parts = []
+        // Tone.Transport.stop(); 
+        // $('#status').text(muse.pat.arr)
+        // console.log('============')
+        let ts = []
+        ts.push( museProcessor(synthA, muse.pat.arr[0], [ .25, .5 ]) )
+        ts.push( museProcessor(synthB, muse.pat.arr[1], [ 1.5, 1.25]) )
+        muse.ts = (new Date()).getTime() + Math.max(...ts) + 500;
+        if (!muse.handle)
+            muse.handle = Tone.Transport.start(); 
+    }
+}
+
+
+// http://tonejs.github.io/Presets/
+let synthA = makeSynthA();
+let synthB = makeSynthB();
+function makeSynthA() {
+    let synth = new Tone.MonoSynth(
+        {
+            "volume" : 10,
+            "oscillator": {
+                "type": "sawtooth"
+            },
+            "filter": {
+                "Q": 2,
+                "type": "bandpass",
+                "rolloff": -24
+            },
+            "envelope": {
+                "attack": 0.01,
+                "decay": 0.1,
+                "sustain": 0.2,
+                "release": 0.6
+            },
+            "filterEnvelope": {
+                "attack": 0.02,
+                "decay": 0.4,
+                "sustain": 1,
+                "release": 0.7,
+                "releaseCurve" : "linear",
+                "baseFrequency": 20,
+                "octaves": 5
+            }
+        }
+    );
+    synth.toMaster();
+    return synth
+}
+function makeSynthB() {
+    let synth = new Tone.MonoSynth(
+        {
+            "oscillator": {
+                "type": "fmsquare5",
+                "modulationType" : "triangle",
+                "modulationIndex" : 2,
+                "harmonicity" : 0.501
+            },
+            "filter": {
+                "Q": 1,
+                "type": "lowpass",
+                "rolloff": -24
+            },
+            "envelope": {
+                "attack": 0.01,
+                "decay": 0.1,
+                "sustain": 0.4,
+                "release": 2
+            },
+            "filterEnvelope": {
+                "attack": 0.01,
+                "decay": 0.1,
+                "sustain": 0.8,
+                "release": 1.5,
+                "baseFrequency": 50,
+                "octaves": 4.4
+            }
+        }
+  
+    );
+    synth.toMaster();
+    return synth
+}
+
+
+function normalize(numbers) {
+    var ratio = Math.max(...numbers) / 10;
+    numbers = numbers.map(v => Math.round(v / ratio));
+    return numbers
+}
+
+
+let muse = {ts:(new Date()).getTime(), mat:null, pat:null, cnt:0, parts:[]}
+
+function musicFrameImpl(dst) {
+    // console.log('----------')
+    // console.log(dst.channels())
+
+    muse.mat = dst.clone()
+    muse.mat.setTo(new cv.Scalar(0,0,0, 255))
+    frm = dst.clone()
+    // cv.cvtColor(muse.mat, muse.mat, cv.COLOR_RGB2HSV);
+
+    let ncols = 4; // # notes
+    let nrows = 2; // # diff instruments
+    let cols = Math.floor(frm.cols / ncols);
+    let rows = Math.floor(frm.rows / nrows);
+
+    muse.pat = {
+        x: ncols,
+        y: nrows,
+        arr: []
+    }
+
+    
+    for (let j = 0; j < nrows; j++) {
+        let arr = []
+        for (let i = 0; i < ncols; i++) {
+            let rect = new cv.Rect(i*cols, j*rows, cols, rows);      
+            
+            let tmp = frm.roi(rect);
+            let test = new cv.Mat()
+            cv.reduce(tmp, test, 0, cv.REDUCE_AVG, tmp.type())
+            let z = Math.floor( test.data.reduce((a,b)=>a+b,0)/test.data.length )
+            test.delete()
+            tmp.delete()
+
+            arr.push(z)
+            let v = z;
+            let tmp2 = muse.mat.roi(rect);
+            tmp2.setTo(new cv.Scalar(v,v,v, 255))
+            tmp2.delete()
+            // console.log(i*cols + '   ' + j*rows + ' : ' + z)
+        }
+        arr = normalize(arr)
+        muse.pat.arr.push((arr))
+    }
+    frm.delete()
+    // console.log(muse.pat.arr)
+}
+
+
+
+function museProcessor(synth, arr, durs) {
+    // console.log(arr)
+    const notes = ["C", "D", "E", "F", "F#", "G", "G#", "A", "Bb", "B"];
+    const octaves = [ 2,3,4, ]; // 1 - 7
+
+    let parr = [];
+    let t = 0;
+    let a,b,c,d;
+    
+    for (let i = 0; i < arr.length; i++) {
+        a = arr[i] % notes.length
+        
+        b = arr[i] % octaves.length
+        c = arr[i] % durs.length
+        
+        parr.push({
+            time: t,
+            note: notes[a] + octaves[b],
+            dur: durs[c]
+        })
+        t += Tone.Time(durs[c]);
+    }    
+
+
+    let part = new Tone.Part(function(time, value){
+        // console.log(value.note + ' ' + value.dur)
+        synth.triggerAttackRelease(value.note, value.dur, time);
+    }, parr);
+    part.loop = true;
+    part.start();
+    muse.parts.push(part);
+    
+    let timeout = (t)*1000
+    return timeout
+
+    
+
 }
