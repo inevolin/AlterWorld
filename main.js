@@ -825,6 +825,9 @@ const muse = {
 }
 const bass_1 = new Tone.Buffer('./samples/custom/bass.wav');
 const kick_1 = new Tone.Buffer('./samples/custom/kick.wav');
+const chat1 = new Tone.Buffer('./samples/custom/ch.wav');
+const ohat1 = new Tone.Buffer('./samples/custom/oh.wav');
+const snare1 = new Tone.Buffer('./samples/custom/snare.wav');
 
 function museSelected() {
     museStop()
@@ -891,6 +894,12 @@ function musicFrame(dst) {
                 museFrameAlgo(dst)
                 muse.pat.arr = transpose(muse.pat.arr)
                 break;
+            case 'dance_8':
+                muse.rows = 8;
+                muse.cols = 5;
+                museFrameAlgo(dst)
+                muse.pat.arr = transpose(muse.pat.arr)
+                break;
         }
     } else {
         muse.cnt++;
@@ -912,6 +921,9 @@ function musicFrame(dst) {
             case 'kickbass_4':
             case 'kickbass_8':
                 museAlgo_kickbass()
+                break;
+            case 'dance_8':
+                museAlgo_dance()
                 break;
         }
         if (!muse.parts.length || !muse.parts.every((e) => e.len == muse.parts[0].len)) {
@@ -1026,10 +1038,7 @@ function museAlgo_kickbass() {
     let pattern = '';
     let len = 0;
     for (var j = 0; j < arr.length; j++) {
-        if (arr[j] % 2 == 0)
-            pattern += 'x'
-        else
-            pattern += '[x]'
+        pattern += '[-x]'
         len++;
     }
     console.log(arr + ' : ' + pattern)
@@ -1047,7 +1056,7 @@ function museAlgo_kickbass() {
     pattern = '';
     len = 0;
     for (var j = 0; j < arr.length; j++) {
-        if (arr[j] % 2 != 0)
+        if (j==0 || arr[j] % 2 != 0)
             pattern += 'x'
         else
             pattern += '-'
@@ -1062,5 +1071,52 @@ function museAlgo_kickbass() {
         len: len,
     }
     muse.parts.push(part)
+}
+function museAlgo_dance() {
+    const pat = muse.pat;
+    let arrs = pat.arr.slice();
 
+    let arr = arrs[0].slice();
+    arr = normalize(arr)
+    let pattern = '';
+    let len = 0;
+    for (var j = 0; j < arr.length; j++) {
+        pattern += '[-x]'
+        len++;
+    }
+    console.log(arr + ' : ' + pattern)
+    let part = {
+        clip: scribble.clip({
+                sample: bass_1,
+                pattern: pattern,
+            }),
+        len: len,
+    }
+    muse.parts.push(part)
+
+    
+    let bufs = [kick_1, ohat1, chat1, snare1]
+    for (var i = 0; i < bufs.length; i++) {
+        arr = arrs[1].slice();
+        arr = normalize(arr)
+        shuffleArray(arr)
+        pattern = '';
+        len = 0;
+        for (var j = 0; j < arr.length; j++) {
+            if (arr[j] % 2 != 0)
+                pattern += 'x'
+            else
+                pattern += '-'
+            len++;
+        }
+        console.log(arr + ' : ' + pattern)
+        part = {
+            clip: scribble.clip({
+                    sample: bufs[i],
+                    pattern: pattern,
+                }),
+            len: len,
+        }
+        muse.parts.push(part)
+    }
 }
