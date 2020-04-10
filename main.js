@@ -1097,7 +1097,7 @@ function museAlgo_dance() {
     
     let bufs = [kick_1, ohat1, chat1, snare1]
     for (var i = 0; i < bufs.length; i++) {
-        arr = arrs[1].slice();
+        arr = arrs[i].slice();
         arr = normalize(arr)
         shuffleArray(arr)
         pattern = '';
