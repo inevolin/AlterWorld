@@ -164,6 +164,10 @@ function uiElements() {
         $("#algoselect").val(localStorage.getItem('algoselect'))
     if (getL('quality'))
         $("#quality").val(localStorage.getItem('quality'))
+    if (getL('museselect')) {
+        $("#museselect").val(localStorage.getItem('museselect'))
+        museSelected()
+    }
 
     if (getL('chkfacingmode'))
         $("#chkfacingmode").prop('checked', localStorage.getItem('chkfacingmode')=='true')
@@ -175,9 +179,6 @@ function uiElements() {
     if (getL('vrmode')) {
         $("#vrmode").prop('checked', localStorage.getItem('vrmode')=='true')
         isVR = $('#vrmode')[0].checked;
-    }
-    if (getL('maestro')) {
-        $("#maestro").prop('checked', localStorage.getItem('maestro')=='true')
     }
     if (getL('timedelay'))
         $("#timedelay").val(localStorage.getItem('timedelay'))
@@ -194,6 +195,10 @@ function uiElements() {
 
     $("#algoselect").change(function () {
         localStorage.setItem('algoselect', $('#algoselect').val());
+    })
+    $("#museselect").change(function () {
+        localStorage.setItem('museselect', $('#museselect').val());
+        museSelected()
     })
     
     $('#chkfacingmode').on('click', function() {
@@ -217,9 +222,6 @@ function uiElements() {
         onCvLoaded();
     })
 
-    $('#maestro').on('click', function() {
-        localStorage.setItem('maestro', $('#maestro')[0].checked);
-    })
     $("#quality").change(function () {
         localStorage.setItem('quality', $('#quality').val());
         onCvLoaded();
@@ -516,8 +518,8 @@ function processStream(_stream) {
                     cv.bitwise_not(dst, dst);
                 }
 
-                // if (evalString) eval(evalString); // music synth
-                if ($('#maestro')[0].checked) {
+                if ($('#museselect').val()) {
+                    if (evalString) eval(evalString); // music synth
                     musicFrame(dst);
                 }
 
@@ -810,131 +812,144 @@ function a_golem(src, dst) {
 
 ////////////// music synths
 
+// http://tonejs.github.io/Presets/
+const muse = {
+    mat:null,
+    pat:null,
+    cnt:0,
+    rows: 1,
+    cols: 1,
+    parts:[],
+    mayPlay: true,
+    bufferLoaded:false,
+}
+const bass_1 = new Tone.Buffer('./samples/custom/bass.wav');
+const kick_1 = new Tone.Buffer('./samples/custom/kick.wav');
 
+function museSelected() {
+    museStop()
+    muse.cnt = -1;
+    muse.mayPlay = true;
+}
+
+function getMuse() {
+    return muse;
+}
+function museStop() {
+    Tone.Transport.stop();
+    for (let p of muse.parts)
+        p.clip.stop().dispose();
+    muse.parts = [];
+    if (muse.bufferLoaded)
+        Tone.Transport.start();
+}
+function normalize(numbers) {
+    var max = Math.max(...numbers);
+    var min = Math.min(...numbers);
+    var rat = max-min;
+    let n = 0;
+    return numbers.map(v =>{
+        if (rat == 0) return 1;
+        n = (v-min) / rat* 10;
+        n = Math.ceil(n);
+        return n;
+    });
+}
+
+Tone.Buffer.on('load', function(){
+    console.log('LOAD');
+    muse.bufferLoaded = true;
+    Tone.Transport.start();
+})
+
+function transpose(arr) {
+    return arr[0].map((col, i) => arr.map(row => row[i])); // transpose
+}
 function musicFrame(dst) {
-
-    if (muse.cnt++ == 60) {
-        musicFrameImpl(dst)
+    if ($('#museselect').val() == 'off') {
+        museStop();
+        return;
+    }
+    if (muse.cnt == -1 || muse.cnt == 30) {
         muse.cnt = 0;
+        switch ($('#museselect').val()) {
+            case 'basic':
+                muse.rows = 4;
+                muse.cols = 1;
+                museFrameAlgo(dst)
+                muse.pat.arr = transpose(muse.pat.arr)
+                break;
+            case 'kickbass_4':
+                muse.rows = 4;
+                muse.cols = 2;
+                museFrameAlgo(dst)
+                muse.pat.arr = transpose(muse.pat.arr)
+                break;
+            case 'kickbass_8':
+                muse.rows = 8;
+                muse.cols = 2;
+                museFrameAlgo(dst)
+                muse.pat.arr = transpose(muse.pat.arr)
+                break;
+        }
+    } else {
+        muse.cnt++;
     }
 
     if (urlParams.has('debug')) {
         if (muse.mat && muse.mat.channels() == dst.channels()) {
             cv.bitwise_or(dst, muse.mat, dst) 
-            //muse.mat.copyTo(dst)
         }
     }
-    // console.log((new Date()).getTime() - muse.ts)
-    if (muse.pat && (new Date()).getTime() - muse.ts >= 0) {
-        for (let part of muse.parts) {
-            part.stop();
-            part.dispose()
+
+    if (muse.pat && muse.mayPlay) {
+        console.log('============' + (new Date()).toLocaleTimeString() )
+        museStop()  // stop what's playing
+        switch ($('#museselect').val()) {
+            case 'basic':
+                museAlgo_basic()
+                break;
+            case 'kickbass_4':
+            case 'kickbass_8':
+                museAlgo_kickbass()
+                break;
         }
-        muse.parts = []
-        // Tone.Transport.stop(); 
-        // $('#status').text(muse.pat.arr)
-        // console.log('============')
-        let ts = []
-        ts.push( museProcessor(synthA, muse.pat.arr[0], [ .25, .5 ]) )
-        ts.push( museProcessor(synthB, muse.pat.arr[1], [ 1.5, 1.25]) )
-        muse.ts = (new Date()).getTime() + Math.max(...ts) + 500;
-        if (!muse.handle)
-            muse.handle = Tone.Transport.start(); 
+        if (!muse.parts.length || !muse.parts.every((e) => e.len == muse.parts[0].len)) {
+            throw new Error('Err: muse parts empty or not all parts of equal length!')
+        }
+        
+
+        // set timeouts
+        let _1m = Tone.Transport.bpm.value/60; // how many (1m) "full notes" per second == 2
+        let repeat = 2;
+        let dur = muse.parts[0].len * repeat + 1;
+        console.log('BPS: ' + _1m, 'dur(s): ' + (dur*_1m/4))
+        for (let p of muse.parts) {
+            p.clip.start().stop( '+0:' + dur )
+        }
+
+
+        muse.mayPlay = false;
+        Tone.Transport.scheduleOnce(function(time) {
+            console.log('mayplay')
+            muse.mayPlay = true;        
+        }, '+0:' + dur );
+        
+        
     }
 }
 
 
-// http://tonejs.github.io/Presets/
-let synthA = makeSynthA();
-let synthB = makeSynthB();
-function makeSynthA() {
-    let synth = new Tone.MonoSynth(
-        {
-            "volume" : 10,
-            "oscillator": {
-                "type": "sawtooth"
-            },
-            "filter": {
-                "Q": 2,
-                "type": "bandpass",
-                "rolloff": -24
-            },
-            "envelope": {
-                "attack": 0.01,
-                "decay": 0.1,
-                "sustain": 0.2,
-                "release": 0.6
-            },
-            "filterEnvelope": {
-                "attack": 0.02,
-                "decay": 0.4,
-                "sustain": 1,
-                "release": 0.7,
-                "releaseCurve" : "linear",
-                "baseFrequency": 20,
-                "octaves": 5
-            }
-        }
-    );
-    synth.toMaster();
-    return synth
-}
-function makeSynthB() {
-    let synth = new Tone.MonoSynth(
-        {
-            "oscillator": {
-                "type": "fmsquare5",
-                "modulationType" : "triangle",
-                "modulationIndex" : 2,
-                "harmonicity" : 0.501
-            },
-            "filter": {
-                "Q": 1,
-                "type": "lowpass",
-                "rolloff": -24
-            },
-            "envelope": {
-                "attack": 0.01,
-                "decay": 0.1,
-                "sustain": 0.4,
-                "release": 2
-            },
-            "filterEnvelope": {
-                "attack": 0.01,
-                "decay": 0.1,
-                "sustain": 0.8,
-                "release": 1.5,
-                "baseFrequency": 50,
-                "octaves": 4.4
-            }
-        }
-  
-    );
-    synth.toMaster();
-    return synth
-}
-
-
-function normalize(numbers) {
-    var ratio = Math.max(...numbers) / 10;
-    numbers = numbers.map(v => Math.round(v / ratio));
-    return numbers
-}
-
-
-let muse = {ts:(new Date()).getTime(), mat:null, pat:null, cnt:0, parts:[]}
-
-function musicFrameImpl(dst) {
+function museFrameAlgo(dst) {
     // console.log('----------')
     // console.log(dst.channels())
 
     muse.mat = dst.clone()
     muse.mat.setTo(new cv.Scalar(0,0,0, 255))
     frm = dst.clone()
-    // cv.cvtColor(muse.mat, muse.mat, cv.COLOR_RGB2HSV);
 
-    let ncols = 4; // # notes
-    let nrows = 2; // # diff instruments
+    let ncols = muse.cols; 
+    let nrows = muse.rows; 
     let cols = Math.floor(frm.cols / ncols);
     let rows = Math.floor(frm.rows / nrows);
 
@@ -944,7 +959,7 @@ function musicFrameImpl(dst) {
         arr: []
     }
 
-    
+    let max = 0;
     for (let j = 0; j < nrows; j++) {
         let arr = []
         for (let i = 0; i < ncols; i++) {
@@ -958,56 +973,94 @@ function musicFrameImpl(dst) {
             tmp.delete()
 
             arr.push(z)
+            if (z > max) max = z;
             let v = z;
             let tmp2 = muse.mat.roi(rect);
             tmp2.setTo(new cv.Scalar(v,v,v, 255))
             tmp2.delete()
-            // console.log(i*cols + '   ' + j*rows + ' : ' + z)
+            //console.log(i*cols + '   ' + j*rows + ' : ' + z)
         }
-        arr = normalize(arr)
-        muse.pat.arr.push((arr))
+        muse.pat.arr.push(arr)
     }
     frm.delete()
     // console.log(muse.pat.arr)
 }
 
+function museAlgo_basic() {
+    // add new sequences
+    // x == 4n (quarter note)
+    // x_ == 2n
+    const pat = muse.pat;
+    let arrs = pat.arr.slice();
 
+    let arr = arrs[0];
+    arr = normalize(arr)
+    let pattern = '';
+    let len = 0;
+    for (var j = 0; j < arr.length; j++) {
+        if (j == 0 || arr[j] > 0 && arr[j] % 2 == 0)
+            pattern += 'x'
+        else if (arr[j] % 3 == 0)
+            pattern += '_'
+        else 
+            pattern += '-'
+        len++;
+    }
+    console.log(arr + ' : ' + pattern)
+    let part = {
+        clip: scribble.clip({
+                sample: bass_1,
+                pattern: pattern,
+            }),
+        len: len,
+    }
+    muse.parts.push(part)
+   
+}
+function museAlgo_kickbass() {
+    const pat = muse.pat;
+    let arrs = pat.arr.slice();
 
-function museProcessor(synth, arr, durs) {
-    // console.log(arr)
-    const notes = ["C", "D", "E", "F", "F#", "G", "G#", "A", "Bb", "B"];
-    const octaves = [ 2,3,4, ]; // 1 - 7
+    let arr = arrs[0];
+    arr = normalize(arr)
+    let pattern = '';
+    let len = 0;
+    for (var j = 0; j < arr.length; j++) {
+        if (arr[j] % 2 == 0)
+            pattern += 'x'
+        else
+            pattern += '[x]'
+        len++;
+    }
+    console.log(arr + ' : ' + pattern)
+    let part = {
+        clip: scribble.clip({
+                sample: bass_1,
+                pattern: pattern,
+            }),
+        len: len,
+    }
+    muse.parts.push(part)
 
-    let parr = [];
-    let t = 0;
-    let a,b,c,d;
-    
-    for (let i = 0; i < arr.length; i++) {
-        a = arr[i] % notes.length
-        
-        b = arr[i] % octaves.length
-        c = arr[i] % durs.length
-        
-        parr.push({
-            time: t,
-            note: notes[a] + octaves[b],
-            dur: durs[c]
-        })
-        t += Tone.Time(durs[c]);
-    }    
-
-
-    let part = new Tone.Part(function(time, value){
-        // console.log(value.note + ' ' + value.dur)
-        synth.triggerAttackRelease(value.note, value.dur, time);
-    }, parr);
-    part.loop = true;
-    part.start();
-    muse.parts.push(part);
-    
-    let timeout = (t)*1000
-    return timeout
-
-    
+    arr = arrs[1];
+    arr = normalize(arr)
+    pattern = '';
+    len = 0;
+    for (var j = 0; j < arr.length; j++) {
+        if (arr[j] % 2 != 0)
+            pattern += 'x'
+        else
+            pattern += '-'
+        len++;
+    }
+    console.log(arr + ' : ' + pattern)
+    part = {
+        clip: scribble.clip({
+                sample: kick_1,
+                pattern: pattern,
+            }),
+        len: len,
+    }
+    muse.parts.push(part)
 
 }
