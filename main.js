@@ -895,6 +895,12 @@ function musicFrame(dst) {
                 museFrameAlgo(dst)
                 muse.pat.arr = transpose(muse.pat.arr)
                 break;
+            case 'dance_4':
+                muse.rows = 4;
+                muse.cols = 5;
+                museFrameAlgo(dst)
+                muse.pat.arr = transpose(muse.pat.arr)
+                break;
             case 'dance_8':
                 muse.rows = 8;
                 muse.cols = 5;
@@ -923,6 +929,7 @@ function musicFrame(dst) {
             case 'kickbass_8':
                 museAlgo_kickbass()
                 break;
+            case 'dance_4':
             case 'dance_8':
                 museAlgo_dance()
                 break;
