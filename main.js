@@ -820,7 +820,7 @@ const muse = {
     rows: 1,
     cols: 1,
     parts:[],
-    mayPlay: true,
+    mayPlay: false,
     bufferLoaded:false,
 }
 const bass_1 = new Tone.Buffer('./samples/custom/bass.wav');
@@ -863,6 +863,7 @@ Tone.Buffer.on('load', function(){
     console.log('LOAD');
     muse.bufferLoaded = true;
     Tone.Transport.start();
+    muse.mayPlay = true;
 })
 
 function transpose(arr) {
