@@ -1107,7 +1107,6 @@ function museAlgo_dance() {
     for (var i = 0; i < bufs.length; i++) {
         arr = arrs[i].slice();
         arr = normalize(arr)
-        shuffleArray(arr)
         pattern = '';
         len = 0;
         for (var j = 0; j < arr.length; j++) {
