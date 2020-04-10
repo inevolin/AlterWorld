@@ -941,7 +941,7 @@ function musicFrame(dst) {
 
         // set timeouts
         let _1m = Tone.Transport.bpm.value/60; // how many (1m) "full notes" per second == 2
-        let repeat = 2;
+        let repeat = 1;
         let dur = muse.parts[0].len * repeat + 1;
         console.log('BPS: ' + _1m, 'dur(s): ' + (dur*_1m/4))
         for (let p of muse.parts) {
