@@ -695,6 +695,18 @@ function apply_algos(src, dst) {
             cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
             cv.Canny(dst, dst, 250, 500, 5, true)
             break;
+        case 'anime1':
+            cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+            cv.Canny(dst, dst, 75, 100)
+            cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGBA);
+            cv.bitwise_or(src, dst, dst)
+            break;
+        case 'anime2':
+            cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+            cv.Canny(dst, dst, 250, 500, 5, true)
+            cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGBA);
+            cv.bitwise_or(src, dst, dst)
+            break;
         case 'adagauss':
             let blocksize = 50;
             if (blocksize % 2 === 0) blocksize = blocksize + 1;
