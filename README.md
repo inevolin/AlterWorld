@@ -1,6 +1,6 @@
 # AlterWorld
 
-AlterWorld is an open source real-time video processing project based on OpenCV for JavaScript (front-end). It has several interesting features such as different image filters and effects, VR capabilities and audio/music generation.
+AlterWorld is an open source real-time video processing project based on OpenCV for JavaScript (front-end). It has several interesting features such as different image filters and effects, VR/AR capabilities and audio/music generation.
 
 ## Usage
 Live demo: https://nevolin.be/alterworld/
