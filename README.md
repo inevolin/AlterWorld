@@ -71,3 +71,7 @@ The shots from these videos have been rendered using OpenCV in Python and then e
 
 1. Download or Clone this repository.
 2. Open `index.html` in your web browser or upload the project to your web server (https/ssl is required to enable webcam access).
+
+## Developers
+
+The main files you need to worry about are `index.html` and `main.js`. Everything else are libraries and assets.
