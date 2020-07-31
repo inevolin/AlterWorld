@@ -12,8 +12,8 @@ YouTube video:
 
 [![https://www.youtube.com/watch?v=1868xd5DWUg](http://i3.ytimg.com/vi/1868xd5DWUg/hqdefault.jpg)](https://www.youtube.com/watch?v=1868xd5DWUg)
 
-#### Augmented Reality (AR) / Virtual Reality(VR)
-You can use a budget VR headset (such as Google Cardboard VR) with your smartpone. Navigate to AlterWorld, select the desired filters and effects, rotate your phone horizontally. Finally to enter VR mode click the "VR mode" checkbox. It's also recommended to go into full-screen mode by double tap/click the output image.
+#### Augmented Reality (AR) / Virtual Reality (VR)
+You can use a budget VR headset (such as Google Cardboard VR) with your smartphone. Navigate to AlterWorld, select the desired filters and effects, rotate your phone horizontally. Finally to enter VR mode click the "VR mode" checkbox. It's also recommended to go into full-screen mode by double tap/click the output image.
 
 YouTube video:
 
@@ -21,7 +21,7 @@ YouTube video:
 
 #### GIF recording
 Use the "screenshot" button to make a screenshot of the current output frame.
-You can use the "start recording" button to record a gif of the output frames (default max duration: 15 seconds). Note that the gif needs to be rendered which may take several seconds up to several minutes (depending on quality and duration). The output screenshot(s) and gif(s) will be shown at the bottom of te page, you can save them from there (they are only visually scaled).
+You can use the "start recording" button to record a gif of the output frames (default max duration: 15 seconds). Note that the gif needs to be rendered which may take several seconds up to several minutes (depending on quality and duration). The output screenshot(s) and gif(s) will be shown at the bottom of the page, you can save them from there (they are only visually scaled).
 
 YouTube video:
 
