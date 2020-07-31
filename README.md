@@ -1,4 +1,4 @@
-# AlterWorld
+# AlterWorld: Video Processing with VR/AR in the browser
 
 AlterWorld is an open source real-time video processing project based on OpenCV for JavaScript (front-end). It has several interesting features such as different image filters and effects, VR/AR capabilities and audio/music generation.
 
