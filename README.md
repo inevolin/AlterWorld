@@ -75,3 +75,11 @@ The shots from these videos have been rendered using OpenCV in Python and then e
 ## Developers
 
 The main files you need to worry about are `index.html` and `main.js`. Everything else are libraries and assets.
+
+## Contact
+
+For enquiries or issues get in touch with me:
+
+Name: [Ilya Nevolin](https://www.linkedin.com/in/iljanevolin/)
+
+Email: ilja.nevolin@gmail.com
